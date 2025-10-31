@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Larga - Story Development Tracker</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #fafafa;
+      min-height: 100vh;
+      padding: 0;
+      color: #111;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    header {
+      border-bottom: 1px solid #e0e0e0;
+      padding-bottom: 30px;
+      margin-bottom: 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-left {
+      flex: 1;
+    }
+
+    .header-nav {
+      display: flex;
+      gap: 10px;
+    }
+
+    h1 {
+      font-size: 2em;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+
+    .tagline {
+      font-size: 0.9em;
+      color: #666;
+      font-weight: 400;
+    }
+
+    .upload-section {
+      background: white;
+      border: 1px solid #e0e0e0;
+      padding: 20px;
+      margin-bottom: 40px;
+    }
+
+    .upload-zone {
+      border: 1px dashed #ccc;
+      padding: 15px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: #fafafa;
+    }
+
+    .upload-zone:hover {
+      background: #f5f5f5;
+      border-color: #999;
+    }
+
+    .upload-zone.dragging {
+      background: #f0f0f0;
+      border-color: #111;
+    }
+
+    .upload-icon {
+      font-size: 1.5em;
+      margin-bottom: 6px;
+    }
+
+    .upload-zone h3 {
+      font-size: 0.9em;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    #fileInput {
+      display: none;
+    }
+
+    .btn {
+      background: #111;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      font-size: 0.85em;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+
+    .btn:hover {
+      background: #333;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1px;
+      background: #e0e0e0;
+      border: 1px solid #e0e0e0;
+      margin-bottom: 40px;
+    }
+
+    .stat-card {
+      background: white;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 1.8em;
+      font-weight: 600;
+      color: #111;
+      margin-bottom: 4px;
+      letter-spacing: -0.02em;
+    }
+
+    .stat-label {
+      color: #666;
+      font-size: 0.75em;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .timeline-section {
+      background: white;
+      border: 1px solid #e0e0e0;
+      padding: 0;
+    }
+
+    .timeline-header {
+      padding: 20px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .timeline-header h2 {
+      font-size: 1em;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+      gap: 1px;
+      background: #e0e0e0;
+    }
+
+    .timeline-item {
+      background: white;
+      padding: 20px;
+      cursor: pointer;
+      transition: background 0.2s;
+      border: none;
+    }
+
+    .timeline-item:hover {
+      background: #fafafa;
+    }
+
+    .timeline-content {
+      background: transparent;
+      padding: 0;
+    }
+
+    .timeline-date {
+      color: #999;
+      font-weight: 400;
+      margin-bottom: 8px;
+      font-size: 0.75em;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      text-align: left;
+    }
+
+    .timeline-title {
+      font-size: 1.1em;
+      font-weight: 600;
+      color: #111;
+      margin-bottom: 12px;
+      letter-spacing: -0.01em;
+      text-align: left;
+    }
+
+    .timeline-meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+      justify-content: flex-start;
+    }
+
+    .meta-badge {
+      background: #f0f0f0;
+      color: #666;
+      padding: 4px 8px;
+      font-size: 0.7em;
+      font-weight: 500;
+      border: 1px solid #e0e0e0;
+    }
+
+    .document-details {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    .section-list {
+      margin-top: 10px;
+    }
+
+    .section-item {
+      background: #fafafa;
+      padding: 6px 8px;
+      margin: 3px 0;
+      font-size: 0.8em;
+      border-left: 2px solid #e0e0e0;
+    }
+
+    .section-title {
+      font-weight: 600;
+      color: #111;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #999;
+    }
+
+    .empty-state-icon {
+      font-size: 4em;
+      margin-bottom: 20px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: #667eea;
+    }
+
+    .error {
+      background: #fee;
+      border: 1px solid #fcc;
+      color: #c33;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+
+    .success {
+      background: #efe;
+      border: 1px solid #cfc;
+      color: #3c3;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+
+    .character-list, .theme-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .character-tag, .theme-tag {
+      background: #764ba2;
+      color: white;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.8em;
+    }
+
+    .theme-tag {
+      background: #f59e0b;
+    }
+
+    .delete-btn {
+      background: #ef4444;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85em;
+      transition: background 0.2s;
+      margin-top: 10px;
+    }
+
+    .delete-btn:hover {
+      background: #dc2626;
+    }
+
+    .document-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .document-info {
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-left">
+        <h1>🎬 Larga</h1>
+        <p class="tagline">Story Development Tracker</p>
+      </div>
+      <div class="header-nav">
+        <a href="/grid.html" class="btn">📊 Story Grid</a>
+      </div>
+    </header>
+
+    <div class="upload-section">
+      <div class="upload-zone" id="uploadZone">
+        <div class="upload-icon">📄</div>
+        <h3>Drop your document here</h3>
+        <p style="margin: 10px 0; color: #999; font-size: 0.9em;">Supports .docx, .pdf, .rtf</p>
+        <p style="margin: 5px 0; color: #999; font-size: 0.75em;">(.pages files: export to PDF first)</p>
+        <button class="btn" onclick="document.getElementById('fileInput').click()">
+          Choose File
+        </button>
+        <input type="file" id="fileInput" accept=".docx,.pdf,.rtf,.pages" />
+      </div>
+      <div id="uploadStatus"></div>
+    </div>
+
+    <div class="stats-grid" id="statsGrid"></div>
+
+    <div class="timeline-section">
+      <div class="timeline-header">
+        <h2>Project Timeline</h2>
+      </div>
+      <div id="timelineContent" class="loading">Loading...</div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+
+    // File upload handling
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('fileInput');
+    const uploadStatus = document.getElementById('uploadStatus');
+
+    // Drag and drop
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadZone.classList.add('dragging');
+    });
+
+    uploadZone.addEventListener('dragleave', () => {
+      uploadZone.classList.remove('dragging');
+    });
+
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('dragging');
+
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        handleFileUpload(files[0]);
+      }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        handleFileUpload(e.target.files[0]);
+      }
+    });
+
+    async function handleFileUpload(file) {
+      const allowedExtensions = ['.docx', '.pdf', '.rtf'];
+      const fileExt = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+
+      if (fileExt === '.pages') {
+        showMessage('error', '.pages files are not supported. Please export your document to PDF or DOCX from Pages first.');
+        return;
+      }
+
+      if (!allowedExtensions.includes(fileExt)) {
+        showMessage('error', 'Please upload a .docx, .pdf, or .rtf file');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('document', file);
+
+      showMessage('loading', `Uploading ${file.name}...`);
+
+      try {
+        const response = await fetch(`${API_BASE}/api/upload`, {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          showMessage('success', `Document uploaded successfully! Found ${data.document.sections.length} sections, ${data.document.characters.length} characters.`);
+          fileInput.value = '';
+          loadTimeline();
+        } else {
+          showMessage('error', data.error || 'Upload failed');
+        }
+      } catch (error) {
+        showMessage('error', `Upload failed: ${error.message}`);
+      }
+    }
+
+    function showMessage(type, message) {
+      uploadStatus.className = type;
+      uploadStatus.textContent = message;
+
+      if (type === 'success' || type === 'error') {
+        setTimeout(() => {
+          uploadStatus.textContent = '';
+          uploadStatus.className = '';
+        }, 5000);
+      }
+    }
+
+    // Load timeline and stats
+    async function loadTimeline() {
+      const timelineContent = document.getElementById('timelineContent');
+
+      try {
+        const response = await fetch(`${API_BASE}/api/timeline`);
+        const data = await response.json();
+
+        // Update stats
+        updateStats(data.stats);
+
+        // Update timeline
+        if (data.documents.length === 0) {
+          timelineContent.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-state-icon">📭</div>
+              <h3>No documents yet</h3>
+              <p>Upload your first document to get started</p>
+            </div>
+          `;
+        } else {
+          timelineContent.innerHTML = `
+            <div class="timeline">
+              ${data.documents.map(doc => renderTimelineItem(doc)).join('')}
+            </div>
+          `;
+        }
+      } catch (error) {
+        timelineContent.innerHTML = `
+          <div class="error">
+            Failed to load timeline: ${error.message}
+          </div>
+        `;
+      }
+    }
+
+    function updateStats(stats) {
+      const statsGrid = document.getElementById('statsGrid');
+
+      const daySpan = stats.firstDate && stats.lastDate
+        ? Math.ceil((new Date(stats.lastDate) - new Date(stats.firstDate)) / (1000 * 60 * 60 * 24))
+        : 0;
+
+      statsGrid.innerHTML = `
+        <div class="stat-card">
+          <div class="stat-value">${stats.totalDocuments}</div>
+          <div class="stat-label">Documents</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${stats.totalWords.toLocaleString()}</div>
+          <div class="stat-label">Total Words</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${stats.allCharacters.length}</div>
+          <div class="stat-label">Characters</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${daySpan}</div>
+          <div class="stat-label">Days</div>
+        </div>
+      `;
+    }
+
+    function renderTimelineItem(doc) {
+      const date = new Date(doc.date);
+      const formattedDate = date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+
+      return `
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-content">
+            <div class="document-info" onclick="toggleDetails('${doc.id}')">
+              <div class="timeline-date">${formattedDate}</div>
+              <div class="timeline-title">📄 ${doc.filename}</div>
+              <div class="timeline-meta">
+                <span class="meta-badge">${doc.type}</span>
+                <span class="meta-badge">${doc.wordCount.toLocaleString()} words</span>
+                <span class="meta-badge">${doc.sections.length} sections</span>
+                ${doc.aiEnhanced ? `<span class="meta-badge" style="background: #10b981; color: white;">🤖 ${doc.aiModel ? doc.aiModel.split('/')[1] : 'AI Enhanced'}</span>` : ''}
+              </div>
+              ${doc.summary ? `<div style="margin-top: 10px; color: #666; font-size: 0.8em;">${doc.summary}</div>` : ''}
+              ${doc.genre ? `<div style="margin-top: 5px;"><span class="meta-badge" style="background: #111; color: white;">Genre: ${doc.genre}</span></div>` : ''}
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 15px; padding-top: 15px; border-top: 1px solid #e0e0e0;">
+              ${!doc.aiEnhanced ? `
+                <button id="analyze-btn-${doc.id}" class="btn" onclick="event.stopPropagation(); analyzeWithAI('${doc.id}')">
+                  🤖 Analyze
+                </button>
+              ` : ''}
+              <button class="btn" onclick="event.stopPropagation(); selectCompareDoc('${doc.id}', '${doc.filename}')">
+                📊 Compare
+              </button>
+              <button class="btn" onclick="event.stopPropagation(); deleteDocument('${doc.id}', '${doc.filename}')">
+                🗑️ Delete
+              </button>
+            </div>
+            <div id="details-${doc.id}" class="document-details" style="display: none;">
+              <div>
+                <strong>Characters (${doc.characters.length}):</strong>
+                <div class="character-list">
+                  ${doc.characters.map(c => `<span class="character-tag">${c}</span>`).join('')}
+                </div>
+              </div>
+              ${doc.themes.length > 0 ? `
+                <div style="margin-top: 15px;">
+                  <strong>Themes:</strong>
+                  <div class="theme-list">
+                    ${doc.themes.map(t => `<span class="theme-tag">${t}</span>`).join('')}
+                  </div>
+                </div>
+              ` : ''}
+              <div style="margin-top: 15px;">
+                <strong>Sections:</strong>
+                <div class="section-list">
+                  ${doc.sections.slice(0, 5).map(s => `
+                    <div class="section-item">
+                      <div class="section-title">${s.title}</div>
+                      <div style="color: #999; font-size: 0.85em;">${s.wordCount} words</div>
+                    </div>
+                  `).join('')}
+                  ${doc.sections.length > 5 ? `<div style="color: #999; margin-top: 10px;">...and ${doc.sections.length - 5} more sections</div>` : ''}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function toggleDetails(id) {
+      const details = document.getElementById(`details-${id}`);
+      details.style.display = details.style.display === 'none' ? 'block' : 'none';
+    }
+
+    async function deleteDocument(id, filename) {
+      if (!confirm(`Are you sure you want to delete "${filename}"?\n\nThis action cannot be undone.`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/api/documents/${id}`, {
+          method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          showMessage('success', 'Document deleted successfully');
+          loadTimeline();
+        } else {
+          showMessage('error', data.error || 'Delete failed');
+        }
+      } catch (error) {
+        showMessage('error', `Delete failed: ${error.message}`);
+      }
+    }
+
+    async function analyzeWithAI(id) {
+      if (!confirm('Analyze this document with AI?\n\nThis will use OpenRouter tokens (GPT-4o).')) {
+        return;
+      }
+
+      // Update button to show loading state
+      const btn = document.getElementById(`analyze-btn-${id}`);
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Analyzing...';
+      btn.style.opacity = '0.7';
+      btn.style.cursor = 'not-allowed';
+
+      showMessage('loading', 'Analyzing with AI... This may take 10-20 seconds.');
+
+      try {
+        const response = await fetch(`${API_BASE}/api/documents/${id}/analyze`, {
+          method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          showMessage('success', 'AI analysis complete! Document updated.');
+          loadTimeline();
+        } else {
+          showMessage('error', data.error || 'AI analysis failed');
+          // Restore button on error
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+          btn.style.opacity = '1';
+          btn.style.cursor = 'pointer';
+        }
+      } catch (error) {
+        showMessage('error', `AI analysis failed: ${error.message}`);
+        // Restore button on error
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+      }
+    }
+
+    // Comparison feature
+    let compareDoc1 = null;
+
+    function selectCompareDoc(id, filename) {
+      if (!compareDoc1) {
+        // First document selected
+        compareDoc1 = { id, filename };
+        alert(`Selected: "${filename}"\n\nNow click "📊 Compare" on another document to see the differences.`);
+      } else {
+        // Second document selected - navigate to comparison
+        window.location.href = `/compare.html?id1=${compareDoc1.id}&id2=${id}`;
+      }
+    }
+
+    // Load timeline on page load
+    loadTimeline();
+  </script>
+</body>
+</html>

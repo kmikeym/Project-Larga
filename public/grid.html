@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Story Grid - Larga</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #fafafa;
+      min-height: 100vh;
+      padding: 0;
+      color: #111;
+    }
+
+    .container {
+      max-width: 100%;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    header {
+      border-bottom: 1px solid #e0e0e0;
+      padding-bottom: 20px;
+      margin-bottom: 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    h1 {
+      font-size: 1.5em;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .back-btn {
+      display: inline-block;
+      background: #111;
+      color: white;
+      padding: 8px 16px;
+      text-decoration: none;
+      font-size: 0.85em;
+      transition: background 0.2s;
+    }
+
+    .back-btn:hover {
+      background: #333;
+    }
+
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1px;
+      background: #e0e0e0;
+      border: 1px solid #e0e0e0;
+      margin-bottom: 30px;
+    }
+
+    .stat-item {
+      background: white;
+      padding: 15px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 1.8em;
+      font-weight: 600;
+      color: #111;
+    }
+
+    .stat-label {
+      color: #666;
+      font-size: 0.75em;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 5px;
+    }
+
+    .grid-section {
+      margin-bottom: 40px;
+    }
+
+    .grid-section h2 {
+      font-size: 1em;
+      font-weight: 600;
+      padding: 15px 20px;
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-bottom: none;
+    }
+
+    .grid-container {
+      overflow-x: auto;
+      background: white;
+      border: 1px solid #e0e0e0;
+    }
+
+    .grid-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 800px;
+    }
+
+    .grid-table th,
+    .grid-table td {
+      border: 1px solid #e0e0e0;
+      padding: 12px;
+      text-align: left;
+      font-size: 0.85em;
+    }
+
+    .grid-table th {
+      background: #fafafa;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .grid-table th.row-header {
+      position: sticky;
+      left: 0;
+      background: #fafafa;
+      z-index: 20;
+      min-width: 150px;
+      font-weight: 600;
+    }
+
+    .grid-table td.row-header {
+      position: sticky;
+      left: 0;
+      background: white;
+      font-weight: 500;
+      z-index: 5;
+    }
+
+    .grid-table th.doc-header {
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      white-space: nowrap;
+      min-width: 60px;
+      max-width: 60px;
+      padding: 12px 8px;
+    }
+
+    .grid-cell {
+      text-align: center;
+      min-width: 60px;
+      max-width: 60px;
+    }
+
+    .grid-cell.present {
+      background: #111;
+      color: white;
+      font-weight: 600;
+    }
+
+    .grid-cell.absent {
+      background: white;
+      color: #ccc;
+    }
+
+    .character-stats,
+    .theme-stats {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      font-size: 0.8em;
+      color: #666;
+    }
+
+    .appearance-count {
+      background: #f0f0f0;
+      padding: 2px 8px;
+      border-radius: 3px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 60px;
+      color: #111;
+      font-size: 1.1em;
+    }
+
+    .error {
+      background: #fee;
+      border: 1px solid #fcc;
+      color: #c33;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #999;
+    }
+
+    .doc-type-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      font-size: 0.7em;
+      background: #f0f0f0;
+      margin-left: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📊 Story Grid</h1>
+      <a href="/" class="back-btn">← Back to Timeline</a>
+    </header>
+
+    <div id="gridContent" class="loading">Loading story grid...</div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+
+    async function loadStoryGrid() {
+      const gridContent = document.getElementById('gridContent');
+
+      try {
+        const response = await fetch(`${API_BASE}/api/story-grid`);
+        const data = await response.json();
+
+        if (data.documents.length === 0) {
+          gridContent.innerHTML = `
+            <div class="empty-state">
+              <h3>No documents yet</h3>
+              <p>Upload documents to see the story grid</p>
+              <a href="/" class="back-btn" style="margin-top: 20px; display: inline-block;">Go to Timeline</a>
+            </div>
+          `;
+          return;
+        }
+
+        renderStoryGrid(data);
+      } catch (error) {
+        gridContent.innerHTML = `
+          <div class="error">
+            Failed to load story grid: ${error.message}
+          </div>
+        `;
+      }
+    }
+
+    function renderStoryGrid(data) {
+      const { documents, characterGrid, themeGrid, stats } = data;
+
+      const gridContent = document.getElementById('gridContent');
+
+      gridContent.innerHTML = `
+        <div class="stats-bar">
+          <div class="stat-item">
+            <div class="stat-value">${stats.totalDocuments}</div>
+            <div class="stat-label">Documents</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">${stats.totalCharacters}</div>
+            <div class="stat-label">Characters</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">${stats.totalThemes}</div>
+            <div class="stat-label">Themes</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">${formatDateRange(stats.dateRange)}</div>
+            <div class="stat-label">Timeline</div>
+          </div>
+        </div>
+
+        ${characterGrid.length > 0 ? `
+          <div class="grid-section">
+            <h2>Character Appearances Across Documents</h2>
+            <div class="grid-container">
+              <table class="grid-table">
+                <thead>
+                  <tr>
+                    <th class="row-header">Character</th>
+                    ${documents.map(doc => `
+                      <th class="doc-header" title="${doc.filename}">
+                        ${doc.filename}
+                        <span class="doc-type-badge">${doc.type}</span>
+                      </th>
+                    `).join('')}
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${characterGrid.map(char => `
+                    <tr>
+                      <td class="row-header">${escapeHtml(char.character)}</td>
+                      ${char.appearances.map(app => `
+                        <td class="grid-cell ${app.present ? 'present' : 'absent'}">
+                          ${app.present ? '●' : '○'}
+                        </td>
+                      `).join('')}
+                      <td style="text-align: center; font-weight: 600;">${char.totalAppearances}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ` : ''}
+
+        ${themeGrid.length > 0 ? `
+          <div class="grid-section">
+            <h2>Theme Evolution Across Documents</h2>
+            <div class="grid-container">
+              <table class="grid-table">
+                <thead>
+                  <tr>
+                    <th class="row-header">Theme</th>
+                    ${documents.map(doc => `
+                      <th class="doc-header" title="${doc.filename}">
+                        ${doc.filename}
+                        <span class="doc-type-badge">${doc.type}</span>
+                      </th>
+                    `).join('')}
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${themeGrid.map(theme => `
+                    <tr>
+                      <td class="row-header">${escapeHtml(theme.theme)}</td>
+                      ${theme.appearances.map(app => `
+                        <td class="grid-cell ${app.present ? 'present' : 'absent'}">
+                          ${app.present ? '●' : '○'}
+                        </td>
+                      `).join('')}
+                      <td style="text-align: center; font-weight: 600;">${theme.totalAppearances}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ` : ''}
+      `;
+    }
+
+    function formatDateRange(dateRange) {
+      if (!dateRange.first || !dateRange.last) return 'N/A';
+      const first = new Date(dateRange.first);
+      const last = new Date(dateRange.last);
+      const days = Math.ceil((last - first) / (1000 * 60 * 60 * 24));
+      return `${days} days`;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Load grid on page load
+    loadStoryGrid();
+  </script>
+</body>
+</html>

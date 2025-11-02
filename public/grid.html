@@ -32,6 +32,21 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 20px;
+    }
+
+    .header-left {
+      flex: 0 0 auto;
+    }
+
+    .header-center {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+    }
+
+    .header-right {
+      flex: 0 0 auto;
     }
 
     h1 {
@@ -54,48 +69,44 @@
       background: #333;
     }
 
-    .stats-bar {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 1px;
-      background: #e0e0e0;
-      border: 1px solid #e0e0e0;
-      margin-bottom: 30px;
-    }
-
-    .stat-item {
-      background: white;
-      padding: 15px;
-      text-align: center;
-    }
-
-    .stat-value {
-      font-size: 1.8em;
-      font-weight: 600;
-      color: #111;
-    }
-
-    .stat-label {
-      color: #666;
-      font-size: 0.75em;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-top: 5px;
-    }
-
-    .grid-section {
-      margin-bottom: 40px;
-    }
-
-    .grid-section h2 {
-      font-size: 1em;
-      font-weight: 600;
-      padding: 15px 20px;
+    /* Tabs */
+    .tabs-container {
       background: white;
       border: 1px solid #e0e0e0;
       border-bottom: none;
     }
 
+    .tabs {
+      display: flex;
+      overflow-x: auto;
+      gap: 1px;
+      background: #e0e0e0;
+    }
+
+    .tab {
+      padding: 12px 20px;
+      background: #f5f5f5;
+      color: #666;
+      cursor: pointer;
+      white-space: nowrap;
+      font-size: 0.85em;
+      font-weight: 500;
+      border: none;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .tab:hover {
+      background: #e8e8e8;
+    }
+
+    .tab.active {
+      background: white;
+      color: #111;
+      font-weight: 600;
+    }
+
+    /* Grid */
     .grid-container {
       overflow-x: auto;
       background: white;
@@ -111,7 +122,7 @@
     .grid-table th,
     .grid-table td {
       border: 1px solid #e0e0e0;
-      padding: 12px;
+      padding: 8px;
       text-align: left;
       font-size: 0.85em;
     }
@@ -119,67 +130,129 @@
     .grid-table th {
       background: #fafafa;
       font-weight: 600;
+      text-align: center;
       position: sticky;
       top: 0;
       z-index: 10;
     }
 
-    .grid-table th.row-header {
+    .grid-table th.character-header {
       position: sticky;
       left: 0;
       background: #fafafa;
       z-index: 20;
       min-width: 150px;
-      font-weight: 600;
+      text-align: left;
     }
 
-    .grid-table td.row-header {
+    .grid-table td.character-name {
       position: sticky;
       left: 0;
       background: white;
       font-weight: 500;
       z-index: 5;
+      cursor: grab;
+      user-select: none;
     }
 
-    .grid-table th.doc-header {
-      writing-mode: vertical-rl;
-      text-orientation: mixed;
-      white-space: nowrap;
-      min-width: 60px;
-      max-width: 60px;
-      padding: 12px 8px;
+    .grid-table td.character-name:active {
+      cursor: grabbing;
     }
 
-    .grid-cell {
-      text-align: center;
-      min-width: 60px;
-      max-width: 60px;
+    .grid-table td.character-name:hover {
+      background: #f5f5f5;
     }
 
-    .grid-cell.present {
-      background: #111;
-      color: white;
-      font-weight: 600;
-    }
-
-    .grid-cell.absent {
-      background: white;
+    .character-name::before {
+      content: '⋮⋮';
       color: #ccc;
+      margin-right: 8px;
+      font-weight: bold;
     }
 
-    .character-stats,
-    .theme-stats {
+    .dragging-row {
+      opacity: 0.5;
+      background: #f0f0f0;
+    }
+
+    .drop-target {
+      border-top: 3px solid #111 !important;
+    }
+
+    .grid-table th.episode-header {
+      min-width: 200px;
+      max-width: 250px;
+    }
+
+    /* Editable cell */
+    .editable-cell {
+      min-width: 250px;
+      max-width: 350px;
+      padding: 12px;
+      vertical-align: top;
+      cursor: text;
+    }
+
+    .editable-cell[contenteditable="true"] {
+      background: #fafafa;
+      transition: all 0.2s;
+    }
+
+    .editable-cell[contenteditable="true"]:focus {
+      outline: none;
+      background: white;
+      border-color: #111;
+    }
+
+    .editable-cell[contenteditable="true"]:empty:before {
+      content: attr(data-placeholder);
+      color: #ccc;
+      font-style: italic;
+    }
+
+    /* Controls */
+    .controls {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-top: none;
+      padding: 15px 20px;
       display: flex;
       gap: 10px;
       align-items: center;
-      font-size: 0.8em;
-      color: #666;
     }
 
-    .appearance-count {
-      background: #f0f0f0;
-      padding: 2px 8px;
-      border-radius: 3px;
+    .add-episode-btn,
+    .save-btn {
+      background: #111;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      font-size: 0.85em;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .add-episode-btn:hover,
+    .save-btn:hover {
+      background: #333;
+    }
+
+    .save-status {
+      color: #666;
+      font-size: 0.85em;
+      margin-left: auto;
+    }
+
+    .save-status.saving {
+      color: #f59e0b;
+    }
+
+    .save-status.saved {
+      color: #10b981;
+    }
+
+    .save-status.error {
+      color: #ef4444;
     }
 
     .loading {
@@ -203,33 +276,115 @@
       color: #999;
     }
 
-    .doc-type-badge {
+    .tab-info {
+      padding: 15px 20px;
+      background: #f5f5f5;
+      border: 1px solid #e0e0e0;
+      border-top: none;
+      font-size: 0.85em;
+      color: #666;
+    }
+
+    .tab-info strong {
+      color: #111;
+    }
+
+    /* Theme indicators - different colors for each theme */
+    .theme-indicator {
       display: inline-block;
+      color: white;
       padding: 2px 6px;
       font-size: 0.7em;
-      background: #f0f0f0;
-      margin-left: 5px;
+      margin: 2px 2px 0 0;
+      border-radius: 2px;
+      font-weight: 500;
+    }
+
+    /* Theme color palette */
+    .theme-0 { background: #f59e0b; } /* Orange */
+    .theme-1 { background: #3b82f6; } /* Blue */
+    .theme-2 { background: #10b981; } /* Green */
+    .theme-3 { background: #8b5cf6; } /* Purple */
+    .theme-4 { background: #ef4444; } /* Red */
+    .theme-5 { background: #06b6d4; } /* Cyan */
+    .theme-6 { background: #ec4899; } /* Pink */
+    .theme-7 { background: #f97316; } /* Deep Orange */
+    .theme-8 { background: #14b8a6; } /* Teal */
+    .theme-9 { background: #6366f1; } /* Indigo */
+    .theme-10 { background: #84cc16; } /* Lime */
+    .theme-11 { background: #f43f5e; } /* Rose */
+    .theme-12 { background: #0ea5e9; } /* Sky Blue */
+    .theme-13 { background: #a855f7; } /* Violet */
+    .theme-14 { background: #22c55e; } /* Emerald */
+
+    .themes-section {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-top: none;
+      padding: 20px;
+    }
+
+    .themes-section h3 {
+      font-size: 0.9em;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .themes-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .theme-badge {
+      color: white;
+      padding: 6px 12px;
+      font-size: 0.85em;
+      border-radius: 3px;
+      font-weight: 500;
+    }
+
+    .editable-cell {
+      font-size: 0.85em;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-wrap: break-word;
     }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>📊 Story Grid</h1>
-      <a href="/" class="back-btn">← Back to Timeline</a>
+      <div class="header-left">
+        <h1>📊 Story Grid</h1>
+      </div>
+      <div class="header-center" id="projectSwitcher">
+        <!-- Project switcher will be injected here -->
+      </div>
+      <div class="header-right">
+        <a href="/" class="back-btn">← Back to Timeline</a>
+      </div>
     </header>
 
     <div id="gridContent" class="loading">Loading story grid...</div>
   </div>
 
+  <script src="/project-utils.js"></script>
   <script>
     const API_BASE = window.location.origin;
+    let currentData = null;
+    let currentDocId = null;
+    let saveTimeout = null;
+    let themeColorMap = {}; // Maps theme names to color indices
+
+    // Initialize project switcher
+    ProjectUtils.renderProjectSwitcher('projectSwitcher');
 
     async function loadStoryGrid() {
       const gridContent = document.getElementById('gridContent');
 
       try {
-        const response = await fetch(`${API_BASE}/api/story-grid`);
+        const response = await ProjectUtils.fetchWithProject(`${API_BASE}/api/story-grid`);
         const data = await response.json();
 
         if (data.documents.length === 0) {
@@ -243,7 +398,9 @@
           return;
         }
 
-        renderStoryGrid(data);
+        currentData = data;
+        currentDocId = data.documents[0].id; // Select first document by default
+        renderStoryGrid();
       } catch (error) {
         gridContent.innerHTML = `
           <div class="error">
@@ -253,115 +410,396 @@
       }
     }
 
-    function renderStoryGrid(data) {
-      const { documents, characterGrid, themeGrid, stats } = data;
+    function getThemeColor(theme, allThemes) {
+      // Assign consistent color to each theme
+      if (!themeColorMap[theme]) {
+        const themeIndex = allThemes.indexOf(theme);
+        themeColorMap[theme] = themeIndex % 15; // 15 colors in palette
+      }
+      return themeColorMap[theme];
+    }
+
+    function renderStoryGrid() {
+      const { documents } = currentData;
+      const currentDoc = documents.find(d => d.id === currentDocId);
+
+      if (!currentDoc) return;
 
       const gridContent = document.getElementById('gridContent');
 
+      // Get characters from the current document only
+      let allCharacters = currentDoc.characters || [];
+
+      // Apply custom character order if it exists
+      if (currentDoc.characterOrder && currentDoc.characterOrder.length > 0) {
+        // Sort characters according to saved order, then alphabetically for any new ones
+        const ordered = currentDoc.characterOrder.filter(c => allCharacters.includes(c));
+        const unordered = allCharacters.filter(c => !currentDoc.characterOrder.includes(c)).sort();
+        allCharacters = [...ordered, ...unordered];
+      } else {
+        allCharacters.sort();
+      }
+
+      // Use document sections as columns (from extracted sections)
+      const sections = currentDoc.sections || [];
+
+      // If no sections, show a message
+      if (sections.length === 0) {
+        gridContent.innerHTML = `
+          <div style="padding: 40px; text-align: center; color: #666;">
+            <p>No sections found in this document.</p>
+            <p style="margin-top: 10px;">Upload a document with section headers (e.g., INTRO, ACT ONE, etc.) or click "🤖 Analyze" to extract sections.</p>
+          </div>
+        `;
+        return;
+      }
+
+      // Initialize character actions grid (using section titles as keys)
+      if (!currentDoc.sectionActions) {
+        currentDoc.sectionActions = {};
+      }
+
+      allCharacters.forEach(char => {
+        if (!currentDoc.sectionActions[char]) {
+          currentDoc.sectionActions[char] = {};
+        }
+        sections.forEach(section => {
+          if (!currentDoc.sectionActions[char][section.title]) {
+            currentDoc.sectionActions[char][section.title] = '';
+          }
+        });
+      });
+
       gridContent.innerHTML = `
-        <div class="stats-bar">
-          <div class="stat-item">
-            <div class="stat-value">${stats.totalDocuments}</div>
-            <div class="stat-label">Documents</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">${stats.totalCharacters}</div>
-            <div class="stat-label">Characters</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">${stats.totalThemes}</div>
-            <div class="stat-label">Themes</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">${formatDateRange(stats.dateRange)}</div>
-            <div class="stat-label">Timeline</div>
+        <div class="tabs-container">
+          <div class="tabs">
+            ${documents.map(doc => {
+              const date = new Date(doc.date).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+              });
+              return `
+                <button class="tab ${doc.id === currentDocId ? 'active' : ''}"
+                        onclick="switchTab('${doc.id}')">
+                  ${date} - ${doc.filename}
+                  <span style="display: block; font-size: 0.75em; color: #999; font-weight: 400;">${doc.type}</span>
+                </button>
+              `;
+            }).join('')}
           </div>
         </div>
 
-        ${characterGrid.length > 0 ? `
-          <div class="grid-section">
-            <h2>Character Appearances Across Documents</h2>
-            <div class="grid-container">
-              <table class="grid-table">
-                <thead>
-                  <tr>
-                    <th class="row-header">Character</th>
-                    ${documents.map(doc => `
-                      <th class="doc-header" title="${doc.filename}">
-                        ${doc.filename}
-                        <span class="doc-type-badge">${doc.type}</span>
-                      </th>
-                    `).join('')}
-                    <th>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${characterGrid.map(char => `
-                    <tr>
-                      <td class="row-header">${escapeHtml(char.character)}</td>
-                      ${char.appearances.map(app => `
-                        <td class="grid-cell ${app.present ? 'present' : 'absent'}">
-                          ${app.present ? '●' : '○'}
-                        </td>
-                      `).join('')}
-                      <td style="text-align: center; font-weight: 600;">${char.totalAppearances}</td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ` : ''}
+        <div class="tab-info">
+          <strong>Document:</strong> ${currentDoc.filename} &nbsp;|&nbsp;
+          <strong>Date:</strong> ${new Date(currentDoc.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} &nbsp;|&nbsp;
+          <strong>Characters:</strong> ${allCharacters.length} &nbsp;|&nbsp;
+          <strong>Episodes/Chapters:</strong> ${currentDoc.episodes.length}
+        </div>
 
-        ${themeGrid.length > 0 ? `
-          <div class="grid-section">
-            <h2>Theme Evolution Across Documents</h2>
-            <div class="grid-container">
-              <table class="grid-table">
-                <thead>
-                  <tr>
-                    <th class="row-header">Theme</th>
-                    ${documents.map(doc => `
-                      <th class="doc-header" title="${doc.filename}">
-                        ${doc.filename}
-                        <span class="doc-type-badge">${doc.type}</span>
-                      </th>
-                    `).join('')}
-                    <th>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${themeGrid.map(theme => `
-                    <tr>
-                      <td class="row-header">${escapeHtml(theme.theme)}</td>
-                      ${theme.appearances.map(app => `
-                        <td class="grid-cell ${app.present ? 'present' : 'absent'}">
-                          ${app.present ? '●' : '○'}
-                        </td>
-                      `).join('')}
-                      <td style="text-align: center; font-weight: 600;">${theme.totalAppearances}</td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
+        <div class="grid-container">
+          <table class="grid-table">
+            <thead>
+              <tr>
+                <th class="character-header">Character</th>
+                ${sections.map((section, index) => `
+                  <th class="episode-header" title="${section.wordCount} words">
+                    ${escapeHtml(section.title)}
+                    <div style="font-size: 0.7em; font-weight: 400; color: #999; margin-top: 3px;">${section.wordCount}w</div>
+                  </th>
+                `).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${allCharacters.map((char, index) => `
+                <tr draggable="true" data-character="${escapeForAttribute(char)}" data-index="${index}">
+                  <td class="character-name">${escapeHtml(char)}</td>
+                  ${sections.map(section => {
+                    const actions = currentDoc.sectionActions?.[char]?.[section.title] || '';
+                    const cellId = `cell-${escapeForAttribute(char)}-${escapeForAttribute(section.title)}`;
+                    return `
+                      <td class="editable-cell"
+                          contenteditable="true"
+                          id="${cellId}"
+                          data-char="${escapeForAttribute(char)}"
+                          data-section="${escapeForAttribute(section.title)}"
+                          data-placeholder="What does ${char} do in ${section.title}?"
+                          oninput="saveSectionAction('${escapeForAttribute(char)}', '${escapeForAttribute(section.title)}', this.textContent)"
+                      >${escapeHtml(actions)}</td>
+                    `;
+                  }).join('')}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="controls">
+          <button class="save-btn" onclick="saveGrid()">💾 Save Grid</button>
+          <span class="save-status" id="saveStatus"></span>
+        </div>
+
+        ${(currentDoc.themes && currentDoc.themes.length > 0) ? `
+          <div class="themes-section">
+            <h3>Themes in this Document</h3>
+            <div class="themes-list">
+              ${currentDoc.themes.map(theme => {
+                const colorClass = getThemeColor(theme, allThemes);
+                return `<span class="theme-badge theme-${colorClass}">${escapeHtml(theme)}</span>`;
+              }).join('')}
             </div>
+            <p style="margin-top: 12px; font-size: 0.8em; color: #666;">
+              Each theme has a unique color to make it easy to track across the grid.
+            </p>
           </div>
         ` : ''}
       `;
+
+      // Set up drag-and-drop after rendering
+      setupDragAndDrop();
     }
 
-    function formatDateRange(dateRange) {
-      if (!dateRange.first || !dateRange.last) return 'N/A';
-      const first = new Date(dateRange.first);
-      const last = new Date(dateRange.last);
-      const days = Math.ceil((last - first) / (1000 * 60 * 60 * 24));
-      return `${days} days`;
+    let draggedRow = null;
+    let draggedCharacter = null;
+
+    function setupDragAndDrop() {
+      const rows = document.querySelectorAll('tbody tr[draggable="true"]');
+
+      rows.forEach(row => {
+        row.addEventListener('dragstart', handleDragStart);
+        row.addEventListener('dragover', handleDragOver);
+        row.addEventListener('drop', handleDrop);
+        row.addEventListener('dragend', handleDragEnd);
+        row.addEventListener('dragleave', handleDragLeave);
+      });
+    }
+
+    function handleDragStart(e) {
+      draggedRow = e.currentTarget;
+      draggedCharacter = e.currentTarget.dataset.character;
+      e.currentTarget.classList.add('dragging-row');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', draggedCharacter);
+    }
+
+    function handleDragOver(e) {
+      if (e.preventDefault) {
+        e.preventDefault();
+      }
+      e.dataTransfer.dropEffect = 'move';
+
+      const targetRow = e.currentTarget;
+      if (targetRow !== draggedRow && targetRow.tagName === 'TR') {
+        targetRow.classList.add('drop-target');
+      }
+
+      return false;
+    }
+
+    function handleDragLeave(e) {
+      const targetRow = e.currentTarget;
+      targetRow.classList.remove('drop-target');
+    }
+
+    function handleDrop(e) {
+      if (e.stopPropagation) {
+        e.stopPropagation();
+      }
+
+      const targetRow = e.currentTarget;
+      targetRow.classList.remove('drop-target');
+
+      if (draggedRow !== targetRow) {
+        // Get current character order
+        const currentDoc = currentData.documents.find(d => d.id === currentDocId);
+        const allCharacters = [...new Set(currentData.documents.flatMap(d => d.characters || []))];
+
+        // Start with existing order or alphabetically sorted list
+        let characterOrder = currentDoc.characterOrder && currentDoc.characterOrder.length > 0
+          ? [...currentDoc.characterOrder]
+          : allCharacters.sort();
+
+        // Make sure all characters are in the order array
+        allCharacters.forEach(char => {
+          if (!characterOrder.includes(char)) {
+            characterOrder.push(char);
+          }
+        });
+
+        // Remove dragged character from its current position
+        const draggedIndex = characterOrder.indexOf(draggedCharacter);
+        characterOrder.splice(draggedIndex, 1);
+
+        // Insert at new position
+        const targetCharacter = targetRow.dataset.character;
+        const targetIndex = characterOrder.indexOf(targetCharacter);
+        characterOrder.splice(targetIndex, 0, draggedCharacter);
+
+        // Save new order
+        currentDoc.characterOrder = characterOrder;
+
+        // Re-render grid and auto-save
+        renderStoryGrid();
+        autoSave();
+      }
+
+      return false;
+    }
+
+    function handleDragEnd(e) {
+      e.currentTarget.classList.remove('dragging-row');
+
+      // Remove drop-target class from all rows
+      const rows = document.querySelectorAll('tbody tr');
+      rows.forEach(row => row.classList.remove('drop-target'));
+
+      draggedRow = null;
+      draggedCharacter = null;
+    }
+
+    function switchTab(docId) {
+      currentDocId = docId;
+      renderStoryGrid();
+    }
+
+    function updateEpisodeTitle(episodeNumber, newTitle) {
+      const currentDoc = currentData.documents.find(d => d.id === currentDocId);
+      if (!currentDoc) return;
+
+      const episode = currentDoc.episodes.find(ep => ep.number === episodeNumber);
+      if (episode) {
+        episode.title = newTitle.trim() || `Episode ${episodeNumber}`;
+        autoSave();
+      }
+    }
+
+    function saveCharacterAction(character, episodeNumber, action) {
+      const currentDoc = currentData.documents.find(d => d.id === currentDocId);
+      if (!currentDoc) return;
+
+      if (!currentDoc.characterActions) {
+        currentDoc.characterActions = {};
+      }
+
+      if (!currentDoc.characterActions[character]) {
+        currentDoc.characterActions[character] = {};
+      }
+
+      currentDoc.characterActions[character][episodeNumber] = action;
+      autoSave();
+    }
+
+    function saveSectionAction(character, sectionTitle, action) {
+      const currentDoc = currentData.documents.find(d => d.id === currentDocId);
+      if (!currentDoc) return;
+
+      if (!currentDoc.sectionActions) {
+        currentDoc.sectionActions = {};
+      }
+
+      if (!currentDoc.sectionActions[character]) {
+        currentDoc.sectionActions[character] = {};
+      }
+
+      currentDoc.sectionActions[character][sectionTitle] = action;
+      autoSave();
+    }
+
+    function addEpisode() {
+      const currentDoc = currentData.documents.find(d => d.id === currentDocId);
+      if (!currentDoc) return;
+
+      const nextNumber = currentDoc.episodes.length + 1;
+      currentDoc.episodes.push({
+        number: nextNumber,
+        title: `Episode ${nextNumber}`
+      });
+
+      // Initialize character actions for new episode
+      const allCharacters = [...new Set(currentData.documents.flatMap(d => d.characters || []))];
+      allCharacters.forEach(char => {
+        if (!currentDoc.characterActions[char]) {
+          currentDoc.characterActions[char] = {};
+        }
+        currentDoc.characterActions[char][nextNumber] = '';
+      });
+
+      renderStoryGrid();
+      autoSave();
+    }
+
+    function autoSave() {
+      // Clear existing timeout
+      if (saveTimeout) {
+        clearTimeout(saveTimeout);
+      }
+
+      // Show saving status
+      const status = document.getElementById('saveStatus');
+      if (status) {
+        status.textContent = 'Saving...';
+        status.className = 'save-status saving';
+      }
+
+      // Debounce save by 1 second
+      saveTimeout = setTimeout(() => {
+        saveGrid();
+      }, 1000);
+    }
+
+    async function saveGrid() {
+      const status = document.getElementById('saveStatus');
+      if (status) {
+        status.textContent = 'Saving...';
+        status.className = 'save-status saving';
+      }
+
+      try {
+        const currentDoc = currentData.documents.find(d => d.id === currentDocId);
+
+        const response = await ProjectUtils.fetchWithProject(`${API_BASE}/api/story-grid/${currentDocId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            episodes: currentDoc.episodes,
+            characterActions: currentDoc.characterActions,
+            sectionActions: currentDoc.sectionActions || {},
+            themeAppearances: currentDoc.themeAppearances || {},
+            characterOrder: currentDoc.characterOrder || []
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          if (status) {
+            status.textContent = '✓ Saved';
+            status.className = 'save-status saved';
+            setTimeout(() => {
+              status.textContent = '';
+            }, 2000);
+          }
+        } else {
+          throw new Error(data.error || 'Save failed');
+        }
+      } catch (error) {
+        if (status) {
+          status.textContent = `✗ Error: ${error.message}`;
+          status.className = 'save-status error';
+        }
+      }
     }
 
     function escapeHtml(text) {
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
+    }
+
+    function escapeForAttribute(text) {
+      return text.replace(/'/g, "\\'").replace(/"/g, '\\"');
     }
 
     // Load grid on page load

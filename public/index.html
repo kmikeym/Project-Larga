@@ -301,6 +301,179 @@
       background: #f59e0b;
     }
 
+    .confidence-high {
+      background: #10b981;
+      color: white;
+      padding: 6px 10px;
+      font-size: 0.8em;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin: 2px 0;
+    }
+
+    .confidence-medium {
+      background: #fbbf24;
+      color: #111;
+      padding: 6px 10px;
+      font-size: 0.8em;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin: 2px 0;
+    }
+
+    .confidence-low {
+      background: #ef4444;
+      color: white;
+      padding: 6px 10px;
+      font-size: 0.8em;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin: 2px 0;
+    }
+
+    .remove-tag-btn {
+      background: none;
+      border: none;
+      color: inherit;
+      cursor: pointer;
+      font-size: 1em;
+      padding: 0;
+      margin-left: 4px;
+      opacity: 0.7;
+    }
+
+    .remove-tag-btn:hover {
+      opacity: 1;
+    }
+
+    .add-item-form {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+      align-items: center;
+    }
+
+    .add-item-input {
+      padding: 6px 10px;
+      border: 1px solid #e0e0e0;
+      font-size: 0.8em;
+      flex: 1;
+      max-width: 200px;
+    }
+
+    .add-item-btn {
+      background: #111;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      font-size: 0.8em;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .add-item-btn:hover {
+      background: #333;
+    }
+
+    .detail-section {
+      margin-top: 15px;
+      padding: 0;
+    }
+
+    .detail-section-title {
+      font-weight: 600;
+      font-size: 0.9em;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .items-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: flex-start;
+    }
+
+    .update-grid-btn {
+      background: #111;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      font-size: 0.85em;
+      cursor: pointer;
+      margin-top: 15px;
+      font-weight: 500;
+    }
+
+    .update-grid-btn:hover {
+      background: #333;
+    }
+
+    .read-full-btn {
+      background: #666;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      font-size: 0.85em;
+      cursor: pointer;
+      margin-top: 15px;
+      font-weight: 500;
+    }
+
+    .read-full-btn:hover {
+      background: #444;
+    }
+
+    .full-document-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 1000;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .full-document-content {
+      max-width: 900px;
+      margin: 40px auto;
+      background: white;
+      border: 1px solid #e0e0e0;
+      padding: 40px;
+    }
+
+    .full-document-text {
+      white-space: pre-wrap;
+      font-family: 'Georgia', serif;
+      line-height: 1.8;
+      color: #111;
+      font-size: 1em;
+    }
+
+    .close-modal-btn {
+      background: #111;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 0.9em;
+      cursor: pointer;
+      margin-bottom: 20px;
+      font-weight: 500;
+    }
+
+    .close-modal-btn:hover {
+      background: #333;
+    }
+
     .delete-btn {
       background: #ef4444;
       color: white;
@@ -335,10 +508,121 @@
         <h1>🎬 Larga</h1>
         <p class="tagline">Story Development Tracker</p>
       </div>
+      <div style="flex: 1; display: flex; justify-content: center;" id="projectSwitcher">
+        <!-- Project switcher will be injected here -->
+      </div>
       <div class="header-nav">
+        <button class="btn" onclick="openSettings()">⚙️ Settings</button>
         <a href="/grid.html" class="btn">📊 Story Grid</a>
       </div>
     </header>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; padding: 20px; overflow-y: auto;">
+      <div style="max-width: 900px; margin: 60px auto; background: white; border: 1px solid #e0e0e0; padding: 30px; max-height: calc(100vh - 120px); overflow-y: auto;">
+        <h2 style="margin-bottom: 20px;">Settings</h2>
+
+        <div style="margin-bottom: 25px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 500;">AI Model Provider</label>
+          <select id="aiModelSelect" style="width: 100%; padding: 10px; border: 1px solid #e0e0e0; font-size: 1em;">
+            <option value="openai/gpt-4o">GPT-4o (OpenAI) - Recommended for creative content</option>
+            <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet (Anthropic)</option>
+            <option value="anthropic/claude-3-opus">Claude 3 Opus (Anthropic)</option>
+            <option value="anthropic/claude-3-haiku">Claude 3 Haiku (Anthropic)</option>
+            <option value="google/gemini-pro-1.5">Gemini Pro 1.5 (Google)</option>
+            <option value="meta-llama/llama-3.1-70b-instruct">Llama 3.1 70B (Meta)</option>
+          </select>
+          <p style="margin-top: 8px; font-size: 0.85em; color: #666;">
+            All models route through OpenRouter. Default: GPT-4o
+          </p>
+          <div style="margin-top: 12px; padding: 12px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;">
+            <p style="font-size: 0.85em; color: #856404; margin: 0;">
+              ⚠️ <strong>Note:</strong> Claude models often block dramatic/violent content due to AWS Bedrock moderation, even for fictional TV/film scripts. GPT-4o is recommended for creative content.
+            </p>
+          </div>
+        </div>
+
+        <!-- AI Prompts Section -->
+        <div style="margin-bottom: 25px; border-top: 1px solid #e0e0e0; padding-top: 25px;">
+          <h3 style="margin-bottom: 15px; font-size: 1.1em;">AI Analysis Prompts</h3>
+          <p style="margin-bottom: 15px; font-size: 0.85em; color: #666;">
+            Customize how AI analyzes different document types. Changes are per-project.
+          </p>
+
+          <!-- Notes Prompt -->
+          <div style="margin-bottom: 20px; padding: 15px; background: #fafafa; border: 1px solid #e0e0e0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <label style="font-weight: 500;">Notes/Feedback Documents</label>
+              <button class="btn" style="padding: 4px 10px; font-size: 0.8em;" onclick="resetPrompt('notes')">Reset to Default</button>
+            </div>
+            <select id="promptModel_notes" style="width: 100%; padding: 8px; border: 1px solid #e0e0e0; margin-bottom: 8px; font-size: 0.9em;">
+              <option value="openai/gpt-4o">GPT-4o (OpenAI)</option>
+              <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+              <option value="anthropic/claude-3-opus">Claude 3 Opus</option>
+              <option value="google/gemini-pro-1.5">Gemini Pro 1.5</option>
+            </select>
+            <textarea id="promptText_notes" style="width: 100%; min-height: 120px; padding: 10px; border: 1px solid #e0e0e0; font-family: monospace; font-size: 0.85em; resize: vertical;"></textarea>
+          </div>
+
+          <!-- Beat Sheet Prompt -->
+          <div style="margin-bottom: 20px; padding: 15px; background: #fafafa; border: 1px solid #e0e0e0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <label style="font-weight: 500;">Beat Sheet Documents</label>
+              <button class="btn" style="padding: 4px 10px; font-size: 0.8em;" onclick="resetPrompt('beatSheet')">Reset to Default</button>
+            </div>
+            <select id="promptModel_beatSheet" style="width: 100%; padding: 8px; border: 1px solid #e0e0e0; margin-bottom: 8px; font-size: 0.9em;">
+              <option value="openai/gpt-4o">GPT-4o (OpenAI)</option>
+              <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+              <option value="anthropic/claude-3-opus">Claude 3 Opus</option>
+              <option value="google/gemini-pro-1.5">Gemini Pro 1.5</option>
+            </select>
+            <textarea id="promptText_beatSheet" style="width: 100%; min-height: 120px; padding: 10px; border: 1px solid #e0e0e0; font-family: monospace; font-size: 0.85em; resize: vertical;"></textarea>
+          </div>
+
+          <!-- Session Notes Prompt -->
+          <div style="margin-bottom: 20px; padding: 15px; background: #fafafa; border: 1px solid #e0e0e0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <label style="font-weight: 500;">Session/Brainstorming Notes</label>
+              <button class="btn" style="padding: 4px 10px; font-size: 0.8em;" onclick="resetPrompt('sessionNotes')">Reset to Default</button>
+            </div>
+            <select id="promptModel_sessionNotes" style="width: 100%; padding: 8px; border: 1px solid #e0e0e0; margin-bottom: 8px; font-size: 0.9em;">
+              <option value="openai/gpt-4o">GPT-4o (OpenAI)</option>
+              <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+              <option value="anthropic/claude-3-opus">Claude 3 Opus</option>
+              <option value="google/gemini-pro-1.5">Gemini Pro 1.5</option>
+            </select>
+            <textarea id="promptText_sessionNotes" style="width: 100%; min-height: 120px; padding: 10px; border: 1px solid #e0e0e0; font-family: monospace; font-size: 0.85em; resize: vertical;"></textarea>
+          </div>
+
+          <!-- Default Prompt -->
+          <div style="margin-bottom: 20px; padding: 15px; background: #fafafa; border: 1px solid #e0e0e0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <label style="font-weight: 500;">Default (Other Documents)</label>
+              <button class="btn" style="padding: 4px 10px; font-size: 0.8em;" onclick="resetPrompt('default')">Reset to Default</button>
+            </div>
+            <select id="promptModel_default" style="width: 100%; padding: 8px; border: 1px solid #e0e0e0; margin-bottom: 8px; font-size: 0.9em;">
+              <option value="openai/gpt-4o">GPT-4o (OpenAI)</option>
+              <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+              <option value="anthropic/claude-3-opus">Claude 3 Opus</option>
+              <option value="google/gemini-pro-1.5">Gemini Pro 1.5</option>
+            </select>
+            <textarea id="promptText_default" style="width: 100%; min-height: 120px; padding: 10px; border: 1px solid #e0e0e0; font-family: monospace; font-size: 0.85em; resize: vertical;"></textarea>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 25px;">
+          <label style="display: flex; align-items: center; cursor: pointer;">
+            <input type="checkbox" id="skipConfirmation" style="margin-right: 8px;">
+            <span>Skip confirmation dialogs for delete operations</span>
+          </label>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button class="btn" onclick="closeSettings()">Cancel</button>
+          <button class="btn" style="background: #111; color: white;" onclick="saveSettings()">Save Settings</button>
+        </div>
+      </div>
+    </div>
 
     <div class="upload-section">
       <div class="upload-zone" id="uploadZone">
@@ -364,8 +648,123 @@
     </div>
   </div>
 
+  <script src="/project-utils.js"></script>
   <script>
     const API_BASE = window.location.origin;
+
+    // Initialize project switcher
+    ProjectUtils.renderProjectSwitcher('projectSwitcher');
+
+    // Settings management
+    let defaultPrompts = null; // Will be loaded from server
+
+    function loadSettings() {
+      const settings = {
+        aiModel: localStorage.getItem('aiModel') || 'openai/gpt-4o',
+        skipConfirmation: localStorage.getItem('skipConfirmation') === 'true'
+      };
+      return settings;
+    }
+
+    function saveSettingsToStorage(aiModel, skipConfirmation) {
+      localStorage.setItem('aiModel', aiModel);
+      localStorage.setItem('skipConfirmation', skipConfirmation);
+    }
+
+    async function openSettings() {
+      const settings = loadSettings();
+      document.getElementById('aiModelSelect').value = settings.aiModel;
+      document.getElementById('skipConfirmation').checked = settings.skipConfirmation;
+
+      // Load project-specific AI prompts
+      try {
+        const projectId = ProjectUtils.getCurrentProjectId();
+        const response = await ProjectUtils.fetchWithProject(`${API_BASE}/api/projects/${projectId}/settings`);
+        const data = await response.json();
+
+        if (data.success && data.settings && data.settings.aiPrompts) {
+          const prompts = data.settings.aiPrompts;
+
+          // Store defaults for reset functionality
+          defaultPrompts = prompts;
+
+          // Populate form fields
+          ['notes', 'beatSheet', 'sessionNotes', 'default'].forEach(type => {
+            if (prompts[type]) {
+              document.getElementById(`promptModel_${type}`).value = prompts[type].model || 'openai/gpt-4o';
+              document.getElementById(`promptText_${type}`).value = prompts[type].prompt || '';
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error loading AI prompts:', error);
+        showMessage('error', 'Failed to load AI prompts');
+      }
+
+      document.getElementById('settingsModal').style.display = 'block';
+    }
+
+    function closeSettings() {
+      document.getElementById('settingsModal').style.display = 'none';
+    }
+
+    async function resetPrompt(type) {
+      if (!defaultPrompts || !defaultPrompts[type]) {
+        showMessage('error', 'Default prompts not loaded');
+        return;
+      }
+
+      const prompt = defaultPrompts[type];
+      document.getElementById(`promptModel_${type}`).value = prompt.model || 'openai/gpt-4o';
+      document.getElementById(`promptText_${type}`).value = prompt.prompt || '';
+      showMessage('success', `Reset ${type} prompt to default`);
+    }
+
+    async function saveSettings() {
+      const aiModel = document.getElementById('aiModelSelect').value;
+      const skipConfirmation = document.getElementById('skipConfirmation').checked;
+      saveSettingsToStorage(aiModel, skipConfirmation);
+
+      // Save AI prompts to project settings
+      try {
+        const aiPrompts = {
+          notes: {
+            model: document.getElementById('promptModel_notes').value,
+            prompt: document.getElementById('promptText_notes').value
+          },
+          beatSheet: {
+            model: document.getElementById('promptModel_beatSheet').value,
+            prompt: document.getElementById('promptText_beatSheet').value
+          },
+          sessionNotes: {
+            model: document.getElementById('promptModel_sessionNotes').value,
+            prompt: document.getElementById('promptText_sessionNotes').value
+          },
+          default: {
+            model: document.getElementById('promptModel_default').value,
+            prompt: document.getElementById('promptText_default').value
+          }
+        };
+
+        const projectId = ProjectUtils.getCurrentProjectId();
+        const response = await ProjectUtils.fetchWithProject(`${API_BASE}/api/projects/${projectId}/settings`, {
+          method: 'POST',
+          body: JSON.stringify({ aiPrompts })
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to save settings');
+        }
+
+        closeSettings();
+        showMessage('success', 'Settings saved successfully');
+      } catch (error) {
+        console.error('Error saving AI prompts:', error);
+        showMessage('error', 'Failed to save AI prompts: ' + error.message);
+      }
+    }
 
     // File upload handling
     const uploadZone = document.getElementById('uploadZone');
@@ -418,7 +817,7 @@
       showMessage('loading', `Uploading ${file.name}...`);
 
       try {
-        const response = await fetch(`${API_BASE}/api/upload`, {
+        const response = await fetch(`${API_BASE}/api/upload?projectId=${ProjectUtils.getCurrentProjectId()}`, {
           method: 'POST',
           body: formData
         });
@@ -454,7 +853,7 @@
       const timelineContent = document.getElementById('timelineContent');
 
       try {
-        const response = await fetch(`${API_BASE}/api/timeline`);
+        const response = await ProjectUtils.fetchWithProject(`${API_BASE}/api/timeline`);
         const data = await response.json();
 
         // Update stats
@@ -520,28 +919,31 @@
         day: 'numeric'
       });
 
+      // Apply document type styling
+      const styleAttr = doc.style ?
+        `style="background-color: ${doc.style.backgroundColor}; color: ${doc.style.color}; border: ${doc.style.border};"` :
+        '';
+
       return `
         <div class="timeline-item">
           <div class="timeline-dot"></div>
-          <div class="timeline-content">
+          <div class="timeline-content" ${styleAttr}>
             <div class="document-info" onclick="toggleDetails('${doc.id}')">
               <div class="timeline-date">${formattedDate}</div>
               <div class="timeline-title">📄 ${doc.filename}</div>
               <div class="timeline-meta">
                 <span class="meta-badge">${doc.type}</span>
                 <span class="meta-badge">${doc.wordCount.toLocaleString()} words</span>
-                <span class="meta-badge">${doc.sections.length} sections</span>
+                <span class="meta-badge">${(doc.sections || []).length} sections</span>
                 ${doc.aiEnhanced ? `<span class="meta-badge" style="background: #10b981; color: white;">🤖 ${doc.aiModel ? doc.aiModel.split('/')[1] : 'AI Enhanced'}</span>` : ''}
               </div>
               ${doc.summary ? `<div style="margin-top: 10px; color: #666; font-size: 0.8em;">${doc.summary}</div>` : ''}
               ${doc.genre ? `<div style="margin-top: 5px;"><span class="meta-badge" style="background: #111; color: white;">Genre: ${doc.genre}</span></div>` : ''}
             </div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 15px; padding-top: 15px; border-top: 1px solid #e0e0e0;">
-              ${!doc.aiEnhanced ? `
-                <button id="analyze-btn-${doc.id}" class="btn" onclick="event.stopPropagation(); analyzeWithAI('${doc.id}')">
-                  🤖 Analyze
-                </button>
-              ` : ''}
+              <button id="analyze-btn-${doc.id}" class="btn" onclick="event.stopPropagation(); analyzeWithAI('${doc.id}')">
+                🤖 ${doc.aiEnhanced ? 'Re-analyze' : 'Analyze'}
+              </button>
               <button class="btn" onclick="event.stopPropagation(); selectCompareDoc('${doc.id}', '${doc.filename}')">
                 📊 Compare
               </button>
@@ -550,31 +952,47 @@
               </button>
             </div>
             <div id="details-${doc.id}" class="document-details" style="display: none;">
-              <div>
-                <strong>Characters (${doc.characters.length}):</strong>
-                <div class="character-list">
-                  ${doc.characters.map(c => `<span class="character-tag">${c}</span>`).join('')}
+              <div class="detail-section">
+                <span class="detail-section-title">Characters (${(doc.characters || []).length}):</span>
+                <div class="items-list" id="characters-list-${doc.id}">
+                  ${renderCharactersWithConfidence(doc.characters || [], doc.id)}
+                </div>
+                <div class="add-item-form">
+                  <input type="text" class="add-item-input" id="new-character-${doc.id}" placeholder="Add character...">
+                  <button class="add-item-btn" onclick="event.stopPropagation(); addCharacter('${doc.id}')">+ Add</button>
                 </div>
               </div>
-              ${doc.themes.length > 0 ? `
-                <div style="margin-top: 15px;">
-                  <strong>Themes:</strong>
-                  <div class="theme-list">
-                    ${doc.themes.map(t => `<span class="theme-tag">${t}</span>`).join('')}
-                  </div>
+
+              <div class="detail-section">
+                <span class="detail-section-title">Themes (${(doc.themes || []).length}):</span>
+                <div class="items-list" id="themes-list-${doc.id}">
+                  ${renderThemesWithConfidence(doc.themes || [], doc.id)}
                 </div>
-              ` : ''}
-              <div style="margin-top: 15px;">
-                <strong>Sections:</strong>
+                <div class="add-item-form">
+                  <input type="text" class="add-item-input" id="new-theme-${doc.id}" placeholder="Add theme...">
+                  <button class="add-item-btn" onclick="event.stopPropagation(); addTheme('${doc.id}')">+ Add</button>
+                </div>
+              </div>
+
+              <div class="detail-section">
+                <span class="detail-section-title">Sections (${(doc.sections || []).length}):</span>
                 <div class="section-list">
-                  ${doc.sections.slice(0, 5).map(s => `
+                  ${(doc.sections || []).map(s => `
                     <div class="section-item">
                       <div class="section-title">${s.title}</div>
                       <div style="color: #999; font-size: 0.85em;">${s.wordCount} words</div>
                     </div>
                   `).join('')}
-                  ${doc.sections.length > 5 ? `<div style="color: #999; margin-top: 10px;">...and ${doc.sections.length - 5} more sections</div>` : ''}
                 </div>
+              </div>
+
+              <div style="display: flex; gap: 10px; margin-top: 20px; padding-top: 15px; border-top: 1px solid #e0e0e0;">
+                <button class="read-full-btn" onclick="event.stopPropagation(); readFullDocument('${doc.id}', '${doc.filename}')">
+                  📖 Read Full Document
+                </button>
+                <button class="update-grid-btn" onclick="event.stopPropagation(); updateGrid('${doc.id}')">
+                  ✅ Update Grid
+                </button>
               </div>
             </div>
           </div>
@@ -588,12 +1006,15 @@
     }
 
     async function deleteDocument(id, filename) {
-      if (!confirm(`Are you sure you want to delete "${filename}"?\n\nThis action cannot be undone.`)) {
-        return;
+      const settings = loadSettings();
+      if (!settings.skipConfirmation) {
+        if (!confirm(`Are you sure you want to delete "${filename}"?\n\nThis action cannot be undone.`)) {
+          return;
+        }
       }
 
       try {
-        const response = await fetch(`${API_BASE}/api/documents/${id}`, {
+        const response = await ProjectUtils.fetchWithProject(`${API_BASE}/api/documents/${id}`, {
           method: 'DELETE'
         });
 
@@ -611,10 +1032,10 @@
     }
 
     async function analyzeWithAI(id) {
-      if (!confirm('Analyze this document with AI?\n\nThis will use OpenRouter tokens (GPT-4o).')) {
-        return;
-      }
+      const settings = loadSettings();
+      const modelName = settings.aiModel.split('/')[1] || settings.aiModel;
 
+      // Skip confirmation, start analysis immediately
       // Update button to show loading state
       const btn = document.getElementById(`analyze-btn-${id}`);
       const originalText = btn.innerHTML;
@@ -623,11 +1044,15 @@
       btn.style.opacity = '0.7';
       btn.style.cursor = 'not-allowed';
 
-      showMessage('loading', 'Analyzing with AI... This may take 10-20 seconds.');
+      showMessage('loading', `Analyzing with ${modelName}... This may take 10-30 seconds.`);
 
       try {
-        const response = await fetch(`${API_BASE}/api/documents/${id}/analyze`, {
-          method: 'POST'
+        const response = await ProjectUtils.fetchWithProject(`${API_BASE}/api/documents/${id}/analyze`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ model: settings.aiModel })
         });
 
         const data = await response.json();
@@ -664,6 +1089,217 @@
       } else {
         // Second document selected - navigate to comparison
         window.location.href = `/compare.html?id1=${compareDoc1.id}&id2=${id}`;
+      }
+    }
+
+    // Helper functions for rendering characters and themes with confidence
+    function assignConfidence(items) {
+      // Simple heuristic: divide items into thirds
+      // High confidence: first 40%
+      // Medium confidence: next 40%
+      // Low confidence: last 20%
+      return items.map((item, index) => {
+        const position = index / items.length;
+        let confidence = 'high';
+        if (position >= 0.4 && position < 0.8) {
+          confidence = 'medium';
+        } else if (position >= 0.8) {
+          confidence = 'low';
+        }
+        return { name: item, confidence };
+      });
+    }
+
+    function renderCharactersWithConfidence(characters, docId) {
+      if (!characters || characters.length === 0) {
+        return '<div style="color: #999; font-size: 0.8em;">No characters detected</div>';
+      }
+
+      const withConfidence = assignConfidence(characters);
+      return withConfidence.map(char => `
+        <div class="confidence-${char.confidence}">
+          <span>${char.name}</span>
+          <button class="remove-tag-btn" onclick="event.stopPropagation(); removeCharacter('${docId}', '${char.name}')">×</button>
+        </div>
+      `).join('');
+    }
+
+    function renderThemesWithConfidence(themes, docId) {
+      if (!themes || themes.length === 0) {
+        return '<div style="color: #999; font-size: 0.8em;">No themes detected</div>';
+      }
+
+      const withConfidence = assignConfidence(themes);
+      return withConfidence.map(theme => `
+        <div class="confidence-${theme.confidence}">
+          <span>${theme.name}</span>
+          <button class="remove-tag-btn" onclick="event.stopPropagation(); removeTheme('${docId}', '${theme.name}')">×</button>
+        </div>
+      `).join('');
+    }
+
+    // Add character
+    async function addCharacter(docId) {
+      const input = document.getElementById(`new-character-${docId}`);
+      const newCharacter = input.value.trim();
+
+      if (!newCharacter) {
+        alert('Please enter a character name');
+        return;
+      }
+
+      try {
+        const response = await ProjectUtils.fetchWithProject(`${API_BASE}/api/documents/${docId}/characters`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ character: newCharacter })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          input.value = '';
+          loadTimeline(); // Refresh to show updated list
+        } else {
+          alert(data.error || 'Failed to add character');
+        }
+      } catch (error) {
+        alert(`Failed to add character: ${error.message}`);
+      }
+    }
+
+    // Remove character
+    async function removeCharacter(docId, character) {
+      try {
+        const response = await ProjectUtils.fetchWithProject(`${API_BASE}/api/documents/${docId}/characters`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ character })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          loadTimeline(); // Refresh to show updated list
+        } else {
+          alert(data.error || 'Failed to remove character');
+        }
+      } catch (error) {
+        alert(`Failed to remove character: ${error.message}`);
+      }
+    }
+
+    // Add theme
+    async function addTheme(docId) {
+      const input = document.getElementById(`new-theme-${docId}`);
+      const newTheme = input.value.trim();
+
+      if (!newTheme) {
+        alert('Please enter a theme');
+        return;
+      }
+
+      try {
+        const response = await ProjectUtils.fetchWithProject(`${API_BASE}/api/documents/${docId}/themes`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ theme: newTheme })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          input.value = '';
+          loadTimeline(); // Refresh to show updated list
+        } else {
+          alert(data.error || 'Failed to add theme');
+        }
+      } catch (error) {
+        alert(`Failed to add theme: ${error.message}`);
+      }
+    }
+
+    // Remove theme
+    async function removeTheme(docId, theme) {
+      try {
+        const response = await ProjectUtils.fetchWithProject(`${API_BASE}/api/documents/${docId}/themes`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ theme })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          loadTimeline(); // Refresh to show updated list
+        } else {
+          alert(data.error || 'Failed to remove theme');
+        }
+      } catch (error) {
+        alert(`Failed to remove theme: ${error.message}`);
+      }
+    }
+
+    // Read full document
+    async function readFullDocument(docId, filename) {
+      try {
+        const response = await ProjectUtils.fetchWithProject(`${API_BASE}/api/documents/${docId}/text`);
+        const data = await response.json();
+
+        if (data.success) {
+          // Create modal
+          const modal = document.createElement('div');
+          modal.className = 'full-document-modal';
+          modal.innerHTML = `
+            <div class="full-document-content">
+              <button class="close-modal-btn" onclick="this.closest('.full-document-modal').remove()">← Close</button>
+              <h2 style="margin-bottom: 20px;">${filename}</h2>
+              <div class="full-document-text">${data.text}</div>
+            </div>
+          `;
+          document.body.appendChild(modal);
+          modal.style.display = 'block';
+
+          // Close on background click
+          modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+              modal.remove();
+            }
+          });
+        } else {
+          alert(data.error || 'Failed to load document text');
+        }
+      } catch (error) {
+        alert(`Failed to load document: ${error.message}`);
+      }
+    }
+
+    // Update grid with AI analysis
+    async function updateGrid(docId) {
+      const settings = loadSettings();
+
+      showMessage('loading', 'Generating Story Grid with AI... This may take 30-60 seconds.');
+
+      try {
+        const response = await ProjectUtils.fetchWithProject(`${API_BASE}/api/documents/${docId}/update-grid`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ model: settings.aiModel })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          showMessage('success', 'Story Grid generated! View it in the Story Grid page.');
+          // Reload timeline to show updated status
+          setTimeout(() => loadTimeline(), 1000);
+        } else {
+          showMessage('error', data.error || 'Failed to generate grid');
+        }
+      } catch (error) {
+        showMessage('error', `Failed to generate grid: ${error.message}`);
       }
     }
 

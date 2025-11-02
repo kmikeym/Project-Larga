@@ -29,6 +29,24 @@
       border-bottom: 1px solid #e0e0e0;
       padding-bottom: 30px;
       margin-bottom: 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .header-left {
+      flex: 0 0 auto;
+    }
+
+    .header-center {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+    }
+
+    .header-right {
+      flex: 0 0 auto;
     }
 
     h1 {
@@ -44,7 +62,6 @@
       color: white;
       padding: 8px 16px;
       text-decoration: none;
-      margin-bottom: 20px;
       font-size: 0.85em;
       transition: background 0.2s;
     }
@@ -189,14 +206,25 @@
 <body>
   <div class="container">
     <header>
-      <h1>📊 Document Comparison</h1>
-      <a href="/" class="back-btn">← Back to Timeline</a>
+      <div class="header-left">
+        <h1>📊 Document Comparison</h1>
+        <a href="/" class="back-btn">← Back to Timeline</a>
+      </div>
+      <div class="header-center" id="projectSwitcher">
+        <!-- Project switcher will be injected here -->
+      </div>
+      <div class="header-right">
+      </div>
     </header>
 
     <div id="comparisonContent" class="loading">Loading comparison...</div>
   </div>
 
+  <script src="/project-utils.js"></script>
   <script>
+    // Initialize project switcher
+    ProjectUtils.renderProjectSwitcher('projectSwitcher');
+
     const urlParams = new URLSearchParams(window.location.search);
     const id1 = urlParams.get('id1');
     const id2 = urlParams.get('id2');
@@ -213,7 +241,7 @@
 
     async function loadComparison() {
       try {
-        const response = await fetch(`/api/compare/${id1}/${id2}`);
+        const response = await ProjectUtils.fetchWithProject(`/api/compare/${id1}/${id2}`);
         const data = await response.json();
 
         if (response.ok) {

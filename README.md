@@ -21,8 +21,14 @@ open http://localhost:3000
 
 ## Features
 
+### Multi-Project Support
+- Work on multiple shows/scripts simultaneously
+- Per-project data isolation (documents, uploads, settings)
+- Project switcher in navigation
+- Create, manage, and delete projects
+
 ### Document Processing
-- Automatic text extraction from .docx files
+- Automatic text extraction from .docx, .pdf, .rtf files
 - Metadata parsing from filename dates (e.g., `22_08_10_Shares_Pitch.docx`)
 - Document type classification (pitch, notes, draft, outline)
 - Section detection and analysis
@@ -32,19 +38,34 @@ open http://localhost:3000
 - Document statistics and progress tracking
 - Character and theme extraction across documents
 
+### Story Grid (Alan Moore BIG NUMBERS Style)
+- **Character × Section matrix** for deep document analysis
+- Track which characters appear in which sections (INTRO, ACT ONE, etc.)
+- Editable cells for character actions/notes per section
+- Drag-and-drop character reordering
+- Auto-save with visual status indicators
+- Inspired by Alan Moore's handwritten story schematics
+
+### Document Comparison
+- Side-by-side comparison of any two documents
+- Character/theme change tracking (added/removed)
+- AI-generated comparison briefs
+- Word count and structural evolution
+
 ### Content Analysis
 - Section breakdown with word counts
-- Character name extraction (ALL-CAPS detection or AI-powered)
-- Theme identification from content (keyword-based or AI-powered)
-- AI-generated summaries and genre classification (when OpenRouter configured)
+- **AI-powered character extraction** (all character names, regardless of capitalization)
+- Theme identification from content
+- AI-generated summaries and genre classification
 - Project-wide statistics
+- **Re-analyze button** for updating AI analysis on existing documents
 
-### AI Enhancement (Optional)
-When you configure an OpenRouter API key, Larga uses Claude 3.5 Sonnet to:
-- Extract character names with context understanding (avoids false positives)
-- Identify major themes and story elements
-- Generate one-sentence summaries of documents
-- Classify genre automatically
+### AI Enhancement (Customizable)
+Customizable AI prompts per project and document type:
+- **Model Selection**: Choose GPT-4o, Claude 3.5 Sonnet, Claude 3 Opus, or Gemini Pro per document type
+- **Custom Prompts**: Edit AI analysis prompts for notes, beat sheets, session notes, and default documents
+- **Template Variables**: Use `{filename}`, `{text}`, `{documentType}`, `{expectedContent}` in prompts
+- **Per-Project Settings**: Each project maintains its own AI configuration
 - Documents processed with AI show a "🤖 AI Enhanced" badge
 
 ## Tech Stack
@@ -71,21 +92,31 @@ The app will automatically deploy from the main branch.
 ## Iterative Development
 
 This is an MVP designed to grow with your needs:
-- **Phase 1 (Current)**: Document upload, timeline, content analysis
-- **Phase 2**: Draft comparison with text diffs
-- **Phase 3**: Notes integration and tracking
-- **Phase 4**: GitHub OAuth and repo sync
-- **Phase 5**: AI analysis with OpenRouter/Claude
+- **Phase 1**: Document upload, timeline, content analysis ✅
+- **Phase 2**: Draft comparison with text diffs ✅
+- **Phase 2.5**: Multi-project support with customizable AI ✅
+- **Phase 3**: Notes integration and tracking (planned)
+- **Phase 4**: GitHub OAuth and repo sync (planned)
+- **Phase 5**: Advanced AI features (continuity checking, plot holes) (planned)
 
 ## API Endpoints
 
 ```
-POST   /api/upload          - Upload and process .docx document
-GET    /api/documents       - List all documents
-GET    /api/documents/:id   - Get specific document details
-GET    /api/timeline        - Get timeline with stats
-GET    /api/health          - Health check
+POST   /api/upload                       - Upload and process document
+DELETE /api/documents/:id                - Delete document
+POST   /api/documents/:id/analyze        - AI analysis of document
+GET    /api/timeline                     - Get chronological timeline with stats
+GET    /api/compare/:id1/:id2            - Compare two documents
+GET    /api/story-grid                   - Get character/theme matrix
+GET    /api/projects                     - List all projects
+POST   /api/projects                     - Create new project
+DELETE /api/projects/:id                 - Delete project
+GET    /api/projects/:id/settings        - Get project AI settings
+POST   /api/projects/:id/settings        - Save project AI settings
+GET    /api/health                       - Health check
 ```
+
+All document endpoints use the `X-Project-Id` header for multi-project isolation.
 
 ## Project Structure
 
@@ -93,9 +124,18 @@ GET    /api/health          - Health check
 larga/
 ├── server.js           - Main Express application
 ├── public/
-│   └── index.html     - Frontend interface
-├── uploads/           - Uploaded documents (runtime)
-├── projects/          - Project data storage (runtime)
+│   ├── index.html     - Timeline view
+│   ├── compare.html   - Document comparison
+│   ├── grid.html      - Story grid visualization
+│   ├── projects.html  - Project management
+│   └── project-utils.js - Shared project utilities
+├── uploads/           - Uploaded documents (runtime, deprecated)
+├── projects/          - Multi-project data storage (runtime)
+│   └── {projectId}/
+│       ├── project-data.json      - Document metadata
+│       ├── project-meta.json      - Project info
+│       ├── project-settings.json  - AI settings
+│       └── uploads/               - Project files
 ├── railway.json       - Railway deployment config
 └── CLAUDE.md          - Development guidance
 ```

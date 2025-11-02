@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Larga** is a Story Development Tracker MVP designed for screenwriters and creative professionals who need to track the evolution of projects through 150+ documents, multiple drafts, notes from collaborators, and revisions over years.
 
-**Current Status**: MVP implemented and functional. Working story grid visualization tracking character/theme evolution across drafts.
+**Current Status**: MVP implemented and functional. Alan Moore-style Story Grid tracking character evolution through document sections. AI-only character extraction with enhanced prompts.
 
 ## Target Use Case: "The Kathryn Workflow"
 
@@ -41,9 +41,15 @@ Metadata stored → Timeline updated → Analysis displayed
 - Content analysis: sections, characters, themes
 - Document type classification (pitch/notes/draft/outline)
 - AI-powered document analysis (summary, genre extraction)
-- Story Grid: Character × Document matrix (Alan Moore style)
+- **Story Grid: Character × Section matrix (Alan Moore BIG NUMBERS style)**
+  - Characters in rows, document sections in columns
+  - Editable cells for character actions/notes per section
+  - Drag-and-drop character reordering
+  - Auto-save with visual status indicators
 - Theme evolution tracking across documents
 - Basic statistics dashboard
+- **AI-Only Character Extraction** (no regex, increased 25k char context)
+- **Re-analyze button** for updating AI analysis on existing documents
 
 **Date Intelligence**: Handles filename patterns like `22_08_10_Shares_Pitch.docx` → Aug 10, 2022
 
@@ -54,6 +60,14 @@ Metadata stored → Timeline updated → Analysis displayed
 - Word count evolution statistics
 - AI-generated comparison briefs explaining why/how changes occurred
 - Thematic shift analysis with percentages
+
+### Phase 2.5: Multi-Project Support ✅ COMPLETE
+- Project folder system for multiple shows/scripts
+- Per-project data isolation (documents, uploads, settings)
+- Project switcher UI in all pages
+- Project management page (create/delete/view projects)
+- Customizable AI prompts per project and document type
+- Per-type model selection (GPT-4o, Claude, Gemini, etc.)
 
 ### Phase 3: Notes Integration
 **Trigger**: First notes/feedback document uploaded
@@ -114,10 +128,16 @@ larga/
 ├── public/
 │   ├── index.html        # Timeline view with grid layout ✅
 │   ├── compare.html      # Document comparison view ✅
-│   └── grid.html         # Story grid visualization ✅
+│   ├── grid.html         # Story grid visualization ✅
+│   ├── projects.html     # Project management page ✅
+│   └── project-utils.js  # Shared project utilities ✅
 ├── uploads/              # User-uploaded documents (runtime, git-ignored)
-├── projects/             # Project data storage (runtime, git-ignored)
-│   └── project-data.json # Document metadata and analysis
+├── projects/             # Multi-project data storage (runtime, git-ignored)
+│   └── {projectId}/
+│       ├── project-data.json      # Document metadata and analysis
+│       ├── project-meta.json      # Project name, description, stats
+│       ├── project-settings.json  # AI prompts and settings
+│       └── uploads/               # Project-specific uploaded files
 ├── Ref/                  # Reference materials
 │   └── Alan Moore's Schematic for BIG NUMBERS.jpg
 ├── CLAUDE.md            # This file
@@ -145,14 +165,21 @@ railway logs             # View production logs
 ## API Endpoints
 
 ```
-POST   /api/upload                    # Upload and process document ✅
-DELETE /api/documents/:id             # Delete document ✅
-POST   /api/documents/:id/analyze     # AI analysis of document ✅
-GET    /api/timeline                  # Get chronological timeline with stats ✅
-GET    /api/compare/:id1/:id2         # Compare two documents ✅
-GET    /api/story-grid                # Get character/theme matrix ✅
-GET    /api/health                    # Health check ✅
+POST   /api/upload                       # Upload and process document ✅
+DELETE /api/documents/:id                # Delete document ✅
+POST   /api/documents/:id/analyze        # AI analysis of document ✅
+GET    /api/timeline                     # Get chronological timeline with stats ✅
+GET    /api/compare/:id1/:id2            # Compare two documents ✅
+GET    /api/story-grid                   # Get character/theme matrix ✅
+GET    /api/projects                     # List all projects ✅
+POST   /api/projects                     # Create new project ✅
+DELETE /api/projects/:id                 # Delete project ✅
+GET    /api/projects/:id/settings        # Get project AI settings ✅
+POST   /api/projects/:id/settings        # Save project AI settings ✅
+GET    /api/health                       # Health check ✅
 ```
+
+All document/timeline/grid endpoints use the `X-Project-Id` header for multi-project isolation.
 
 ## Document Naming Convention
 
@@ -237,12 +264,14 @@ When beginning implementation, start with the first real document:
 4. **Document Comparison**: Side-by-side analysis with AI-generated briefs
 5. **AI Analysis**: GPT-4o powered summaries and genre classification
 6. **Smart Classification**: Automatic detection of pitch/notes/draft/outline documents
+7. **Multi-Project Support**: Work on multiple shows/scripts with isolated data
+8. **Customizable AI Prompts**: Per-project, per-document-type prompt and model customization
+9. **Character Reordering**: Drag-and-drop to reorder characters in Story Grid
 
 ### Known Limitations
 - .pages files not supported (macOS package bundles - users must export to PDF/DOCX)
 - Character extraction based on ALL-CAPS words (screenplay convention)
 - Theme extraction uses simple keyword analysis (could be more sophisticated)
-- No multi-project support yet (single project per installation)
 - No user authentication (local/single-user deployment)
 
 ## Next Steps (Priority Order)
@@ -275,8 +304,8 @@ When beginning implementation, start with the first real document:
 ### Phase 4: Deployment & Sharing
 - Railway deployment configuration
 - GitHub integration for version control
-- Multi-project support
 - Export functionality (PDF reports, CSV data)
+- Collaboration features (share projects with team members)
 
 ### Phase 5: Advanced AI Features (Future)
 - Continuity checking across documents
@@ -288,7 +317,26 @@ When beginning implementation, start with the first real document:
 ## Development Notes
 
 ### AI Model Choice
-Currently using `openai/gpt-4o` via OpenRouter instead of Claude to avoid moderation issues with creative content. May switch back to `anthropic/claude-3.5-sonnet` if moderation improves.
+Default model is `openai/gpt-4o` via OpenRouter to avoid moderation issues with creative content. Users can now customize AI models per document type (notes, beat sheets, session notes) in project settings. Supported models include GPT-4o, Claude 3.5 Sonnet, Claude 3 Opus, and Gemini Pro 1.5.
+
+### AI Character Extraction
+**Recent Change**: Character extraction now uses **AI-only** approach (no regex fallback):
+- Regex extraction (`extractCharacters()`) disabled during upload - characters default to `[]`
+- AI analysis prompt explicitly instructs to extract ALL characters (main, supporting, minor)
+- Context window increased from 4,000 to 25,000 characters to capture full documents
+- "🤖 Analyze" button always visible as "Analyze" or "Re-analyze" for updating extractions
+- Prompt includes specific examples and emphasizes thoroughness
+
+**Why**: Regex-based ALL-CAPS extraction missed mixed-case character names and only caught characters in the first 4k chars. AI extraction is comprehensive and context-aware.
+
+### AI Prompt Customization
+Users can customize AI analysis prompts per project and document type. Template variables available:
+- `{filename}` - Document filename
+- `{text}` - Document text (now up to 25,000 chars, was 4,000)
+- `{documentType}` - Classified document type
+- `{expectedContent}` - Expected content based on document type
+
+Settings stored in `projects/{projectId}/project-settings.json`.
 
 ### Design Philosophy
 The interface uses a minimalist monochrome design inspired by https://chloelouise.design/:

@@ -9,7 +9,8 @@ const cors = require('cors');
 const OpenAI = require('openai');
 const Diff = require('diff');
 const pdfParse = require('pdf-parse');
-const { parseStream } = require('rtf-parser');
+const rtfParser = require('rtf-parser');
+const { DOCUMENT_TYPES, classifyDocument, getDocumentTypeStyle } = require('./document-types');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -30,16 +31,101 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
+// Helper function to get project paths
+function getProjectPaths(projectId) {
+  const projectDir = path.join(PROJECTS_DIR, projectId);
+  return {
+    projectDir,
+    uploadsDir: path.join(projectDir, 'uploads'),
+    dataPath: path.join(projectDir, 'project-data.json'),
+    metaPath: path.join(projectDir, 'project-meta.json')
+  };
+}
+
+// Middleware to extract project ID from request
+function getProjectId(req) {
+  // Check header first (preferred method)
+  if (req.headers['x-project-id']) {
+    return req.headers['x-project-id'];
+  }
+
+  // Check query parameter as fallback
+  if (req.query.projectId) {
+    return req.query.projectId;
+  }
+
+  // For backwards compatibility, use legacy path
+  return 'default';
+}
+
 // Ensure required directories exist
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
 const PROJECTS_DIR = path.join(__dirname, 'projects');
-fs.ensureDirSync(UPLOADS_DIR);
 fs.ensureDirSync(PROJECTS_DIR);
+
+// Migration: Move legacy project-data.json to default project folder
+async function migrateLegacyProject() {
+  const legacyDataPath = path.join(PROJECTS_DIR, 'project-data.json');
+  const legacyUploadsDir = UPLOADS_DIR;
+
+  // Check if legacy project-data.json exists at old location
+  if (await fs.pathExists(legacyDataPath)) {
+    console.log('📦 Migrating legacy project data to default project...');
+
+    const defaultPaths = getProjectPaths('default');
+
+    try {
+      // Create default project directory
+      await fs.ensureDir(defaultPaths.projectDir);
+      await fs.ensureDir(defaultPaths.uploadsDir);
+
+      // Move project-data.json
+      await fs.move(legacyDataPath, defaultPaths.dataPath, { overwrite: false });
+
+      // Move uploads directory contents
+      if (await fs.pathExists(legacyUploadsDir)) {
+        const files = await fs.readdir(legacyUploadsDir);
+        for (const file of files) {
+          const oldPath = path.join(legacyUploadsDir, file);
+          const newPath = path.join(defaultPaths.uploadsDir, file);
+          await fs.move(oldPath, newPath, { overwrite: false });
+        }
+      }
+
+      // Create project metadata
+      const metadata = {
+        id: 'default',
+        name: 'Default Project',
+        description: 'Migrated from legacy data',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      await fs.writeJSON(defaultPaths.metaPath, metadata, { spaces: 2 });
+
+      console.log('✅ Migration complete! Legacy data moved to projects/default/');
+    } catch (error) {
+      console.error('❌ Migration error:', error.message);
+    }
+  }
+}
+
+// Run migration on startup
+migrateLegacyProject().catch(console.error);
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, UPLOADS_DIR);
+  destination: async (req, file, cb) => {
+    const projectId = getProjectId(req);
+    const paths = getProjectPaths(projectId);
+
+    // Ensure project directories exist
+    try {
+      await fs.ensureDir(paths.uploadsDir);
+      cb(null, paths.uploadsDir);
+    } catch (error) {
+      cb(error);
+    }
   },
   filename: (req, file, cb) => {
     const timestamp = Date.now();
@@ -94,7 +180,7 @@ async function extractTextFromFile(filePath, filename) {
           const stream = fs.createReadStream(filePath);
           let text = '';
 
-          parseStream(stream, (err, doc) => {
+          rtfParser.stream(stream, (err, doc) => {
             if (err) {
               reject(err);
             } else {
@@ -162,87 +248,9 @@ function parseDocumentDate(filename) {
   return new Date();
 }
 
-// Helper function to classify document type
+// Helper function to classify document type (using taxonomy from document-types.js)
 function classifyDocumentType(filename, text) {
-  const lowerFilename = filename.toLowerCase();
-  const lowerText = text.toLowerCase();
-
-  // Check filename first
-  if (lowerFilename.includes('notes') || lowerFilename.includes('feedback') || lowerFilename.includes('comments')) {
-    return 'notes';
-  }
-  if (lowerFilename.includes('pitch') || lowerFilename.includes('treatment')) {
-    return 'pitch';
-  }
-  if (lowerFilename.includes('outline')) {
-    return 'outline';
-  }
-  if (lowerFilename.includes('draft') || lowerFilename.includes('revision')) {
-    return 'draft';
-  }
-
-  // Analyze content for better classification
-  const firstParagraph = text.substring(0, 1000).toLowerCase();
-
-  // Notes indicators - look for feedback language
-  const notesIndicators = [
-    'notes from',
-    'feedback on',
-    'comments on',
-    'thoughts on',
-    'suggestions:',
-    'changes needed',
-    'needs work',
-    'consider changing',
-    'please revise',
-    'i think you should',
-    'my notes:',
-    'overall thoughts'
-  ];
-  const notesScore = notesIndicators.filter(indicator => lowerText.includes(indicator)).length;
-
-  // Pitch indicators - selling/marketing language
-  const pitchIndicators = [
-    'logline:',
-    'logline',
-    'one-liner:',
-    'elevator pitch',
-    'series bible',
-    'genre:',
-    'tone:',
-    'comparable titles',
-    'similar to',
-    'meets',
-    'in the vein of',
-    'target audience',
-    'why now',
-    'market opportunity'
-  ];
-  const pitchScore = pitchIndicators.filter(indicator => firstParagraph.includes(indicator)).length;
-
-  // Draft/Script indicators - screenplay formatting
-  const scriptIndicators = [
-    'fade in',
-    'int.',
-    'ext.',
-    'fade out',
-    'cut to:',
-    'scene heading',
-    'action:',
-    'dialogue:'
-  ];
-  const scriptScore = scriptIndicators.filter(indicator => lowerText.includes(indicator)).length;
-
-  // Classify based on scores
-  if (notesScore >= 2) return 'notes';
-  if (pitchScore >= 2) return 'pitch';
-  if (scriptScore >= 2) return 'draft';
-
-  // Fallback to generic types
-  if (lowerText.includes('logline') || lowerText.includes('tone:')) return 'pitch';
-  if (lowerText.includes('notes from')) return 'notes';
-
-  return 'document';
+  return classifyDocument(filename, text);
 }
 
 // Helper function to extract sections from text
@@ -291,6 +299,9 @@ function extractSections(text) {
 }
 
 // Helper function to extract character names
+// DEPRECATED: This regex-based extraction is no longer used.
+// Characters are now ONLY extracted via AI analysis for better accuracy.
+// Keeping this function for reference but it's not called during document upload.
 function extractCharacters(text) {
   const characters = new Set();
   const words = text.split(/\s+/);
@@ -409,41 +420,267 @@ Be specific and insightful. Focus on creative/narrative shifts, not just statist
   }
 }
 
+// Default AI Analysis Prompts (can be customized per-project)
+const DEFAULT_AI_PROMPTS = {
+  notes: {
+    model: 'openai/gpt-4o',
+    prompt: `You are analyzing NOTES/FEEDBACK on a screenplay or pitch. These are comments from producers, agents, or executives.
+
+Document filename: {filename}
+
+Full text of notes:
+{text}
+
+Read the actual notes above and extract:
+
+1. "characters": Character names mentioned in the feedback (NOT the names of people giving feedback)
+2. "themes": The story/creative topics discussed in the notes (e.g., "protagonist arc", "pacing", "tone", "world-building")
+3. "summary": Write ONE sentence describing the MAIN CREATIVE CONCERNS or suggestions in these notes. Read the actual feedback and summarize what they're asking for.
+
+Examples of GOOD summaries:
+- "Notes emphasize the need for a stronger antagonist and clearer stakes in Act 2"
+- "Feedback focuses on making the protagonist more likeable and the tone less dark"
+- "Executive requests more distinctive world-building and faster pacing in the cold open"
+
+Examples of BAD summaries (DO NOT write these):
+- "The document contains feedback and suggestions" ❌
+- "Notes provide input on the project" ❌
+- "Document includes praise and concerns" ❌
+
+4. "genre": If notes mention the genre, include it; otherwise null
+5. "notesFrom": Who gave these notes? (look for names/titles)
+6. "actionItems": Specific changes requested (quoted from the notes if possible)
+
+Read the notes carefully and be specific about what they actually say.
+
+Return only valid JSON, no additional text.`
+  },
+  beatSheet: {
+    model: 'openai/gpt-4o',
+    prompt: `Analyze this BEAT SHEET document.
+
+Document filename: {filename}
+
+Text excerpt:
+{text}
+
+Expected content: {expectedContent}
+
+Please provide a JSON response with:
+1. "characters": Array of character names appearing in the beats
+2. "themes": Array of major story themes/arcs (3-5 themes)
+3. "summary": One sentence describing the overall story arc
+4. "genre": The genre (e.g., "drama", "comedy", "thriller")
+5. "structure": Description of the act structure (e.g., "Three-act structure with cold open")
+6. "beatCount": Approximate number of beats/scenes
+
+Return only valid JSON, no additional text.`
+  },
+  sessionNotes: {
+    model: 'openai/gpt-4o',
+    prompt: `Analyze this internal BRAINSTORMING/SESSION NOTE.
+
+Document filename: {filename}
+
+Text excerpt:
+{text}
+
+This is informal thinking/planning by the writer.
+
+Please provide a JSON response with:
+1. "characters": Array of character names mentioned (if any)
+2. "themes": Array of topics/ideas being explored (3-5)
+3. "summary": One sentence capturing the main thinking/ideas
+4. "genre": If genre is mentioned, include it; otherwise null
+5. "questions": Array of questions the writer is exploring (if identifiable)
+
+Return only valid JSON, no additional text.`
+  },
+  default: {
+    model: 'openai/gpt-4o',
+    prompt: `Analyze this {documentType} document.
+
+Document filename: {filename}
+
+Text excerpt:
+{text}
+
+Expected content: {expectedContent}
+
+Please provide a JSON response with:
+
+1. "characters": Array of ALL character names found in this document.
+   - For screenplays/pitches: Include ALL character names mentioned (main characters, supporting characters, minor characters)
+   - Look for names in ALL-CAPS (screenplay format) AND mixed-case mentions
+   - Include first names, full names, or descriptive names (e.g., "BO", "Max", "DOCTOR LARRY", "Junior Pastor Kurt")
+   - Return as array of strings: ["Bo", "Max", "Cherie", "Larry", "Dolly", "Eddie", "Sarah", "Kurt", "Michelle", "Maia"]
+   - If no characters found, return empty array: []
+
+2. "themes": Array of major themes (3-5 themes)
+
+3. "summary": One sentence summary of the document
+
+4. "genre": The genre (e.g., "drama", "comedy", "thriller")
+
+IMPORTANT: Extract ALL character names you find, not just the main ones. Be thorough.
+
+Return only valid JSON, no additional text.`
+  }
+};
+
 // AI-powered content analysis (optional, uses OpenRouter if configured)
-async function analyzeContentWithAI(text, filename) {
+async function analyzeContentWithAI(text, filename, documentType = 'unclassified', model = 'openai/gpt-4o', projectId = 'default') {
   if (!openai) {
     return null; // Fall back to regex-based extraction
   }
 
   try {
+    // If unclassified, first determine the document type
+    let detectedType = documentType;
+    if (documentType === 'unclassified') {
+      const typeClassification = await classifyDocumentWithAI(text, filename, model);
+      if (typeClassification) {
+        detectedType = typeClassification;
+      }
+    }
+
+    // Load project-specific AI settings
+    const settingsPath = path.join(PROJECTS_DIR, projectId, 'project-settings.json');
+    let aiPrompts = DEFAULT_AI_PROMPTS;
+
+    if (await fs.pathExists(settingsPath)) {
+      try {
+        const settings = await fs.readJSON(settingsPath);
+        if (settings.aiPrompts) {
+          aiPrompts = settings.aiPrompts;
+        }
+      } catch (error) {
+        console.warn(`Failed to load project settings for ${projectId}, using defaults:`, error.message);
+      }
+    }
+
+    // Select the appropriate prompt config based on document type
+    let promptConfig;
+    if (detectedType === 'notes') {
+      promptConfig = aiPrompts.notes || DEFAULT_AI_PROMPTS.notes;
+    } else if (detectedType === 'beatSheet') {
+      promptConfig = aiPrompts.beatSheet || DEFAULT_AI_PROMPTS.beatSheet;
+    } else if (detectedType === 'sessionNotes' || detectedType === 'quickNote') {
+      promptConfig = aiPrompts.sessionNotes || DEFAULT_AI_PROMPTS.sessionNotes;
+    } else {
+      promptConfig = aiPrompts.default || DEFAULT_AI_PROMPTS.default;
+    }
+
+    // Use the model specified in the prompt config, not the passed-in parameter
+    const selectedModel = promptConfig.model;
+
+    // Get document type info for template variables
+    const typeInfo = DOCUMENT_TYPES[detectedType];
+    const typeName = typeInfo ? typeInfo.name : 'Document';
+    const expectedContent = typeInfo ? typeInfo.expectedContent.join(', ') : '';
+
+    // Replace template variables in the prompt
+    // Send more text to capture all characters (up to ~25,000 chars / ~6,000 tokens)
+    const analysisPrompt = promptConfig.prompt
+      .replace(/{filename}/g, filename)
+      .replace(/{text}/g, text.substring(0, 25000))
+      .replace(/{documentType}/g, typeName.toUpperCase())
+      .replace(/{expectedContent}/g, expectedContent);
+
     const completion = await openai.chat.completions.create({
-      model: "openai/gpt-4o",  // Using OpenAI to avoid Bedrock moderation issues
+      model: selectedModel,
       messages: [{
         role: "user",
-        content: `Analyze this screenplay/story document and extract key information.
-
-Document filename: ${filename}
-
-Text excerpt (first 4000 chars):
-${text.substring(0, 4000)}
-
-Please provide a JSON response with:
-1. "characters": Array of character names (actual people, not concepts)
-2. "themes": Array of major themes (3-5 themes)
-3. "summary": One sentence summary of the document
-4. "genre": The genre (e.g., "drama", "comedy", "thriller")
-
-Return only valid JSON, no additional text.`
+        content: analysisPrompt
       }],
       response_format: { type: "json_object" }
     });
 
     const analysis = JSON.parse(completion.choices[0].message.content);
-    analysis.model = "openai/gpt-4o"; // Track which model was used
+    analysis.model = selectedModel; // Track which model was used
+    analysis.detectedType = detectedType; // Include the detected document type
     return analysis;
   } catch (error) {
     console.error('AI analysis error:', error.message);
-    return null; // Fall back to regex-based extraction
+    console.error('Full error:', error);
+
+    // Check if this is a moderation/content policy error
+    if (error.message && (
+      error.message.includes('content policy') ||
+      error.message.includes('moderation') ||
+      error.message.includes('harmful') ||
+      error.message.includes('blocked') ||
+      error.status === 400
+    )) {
+      // If using Claude, suggest GPT-4o as fallback
+      if (error.message.includes('claude') || error.message.includes('anthropic')) {
+        throw new Error('Claude content moderation blocked this request. This often happens with creative/dramatic content. Please switch to GPT-4o in Settings, which has more relaxed moderation for fictional content.');
+      } else {
+        throw new Error('Content moderation blocked this request. Your creative content may have triggered safety filters. Try using GPT-4o which is better for fictional TV/film content.');
+      }
+    }
+
+    throw error; // Re-throw other errors
+  }
+}
+
+// AI-powered document type classification
+async function classifyDocumentWithAI(text, filename, model = 'openai/gpt-4o') {
+  if (!openai) {
+    return null;
+  }
+
+  try {
+    const availableTypes = Object.keys(DOCUMENT_TYPES)
+      .filter(key => key !== 'unclassified')
+      .map(key => {
+        const type = DOCUMENT_TYPES[key];
+        return `- ${key}: ${type.description}`;
+      })
+      .join('\n');
+
+    const completion = await openai.chat.completions.create({
+      model: model,
+      messages: [{
+        role: "user",
+        content: `Classify this document into one of the following types:
+
+${availableTypes}
+
+Document filename: ${filename}
+
+Text excerpt (first 2000 chars):
+${text.substring(0, 2000)}
+
+Return ONLY the type key (e.g., "pitch", "notes", "beatSheet", etc.), nothing else.`
+      }]
+    });
+
+    const detectedType = completion.choices[0].message.content.trim().toLowerCase();
+
+    // Validate the detected type exists
+    if (DOCUMENT_TYPES[detectedType]) {
+      return detectedType;
+    }
+
+    return 'pitch'; // Fallback to pitch if invalid
+  } catch (error) {
+    console.error('AI classification error:', error.message);
+
+    // Check for moderation errors
+    if (error.message && (
+      error.message.includes('content policy') ||
+      error.message.includes('moderation') ||
+      error.message.includes('harmful') ||
+      error.message.includes('blocked') ||
+      error.status === 400
+    )) {
+      if (model.includes('claude') || model.includes('anthropic')) {
+        throw new Error('Claude moderation blocked document classification. Switch to GPT-4o in Settings for fictional/dramatic content.');
+      }
+    }
+
+    return 'pitch'; // Fallback
   }
 }
 
@@ -464,15 +701,15 @@ app.post('/api/upload', upload.single('document'), async (req, res) => {
 
     // Parse metadata
     const date = parseDocumentDate(originalFilename);
-    const type = classifyDocumentType(originalFilename, text);
+    const type = 'unclassified'; // Don't classify until AI analysis
     const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
 
     // Analyze content with regex (AI analysis available on-demand)
     const sections = extractSections(text);
-    const characters = extractCharacters(text);
     const themes = extractThemes(text);
 
     // Create document object
+    // NOTE: Characters are now ONLY extracted via AI analysis, not regex
     const document = {
       id: Date.now().toString(),
       filename: originalFilename,
@@ -481,7 +718,7 @@ app.post('/api/upload', upload.single('document'), async (req, res) => {
       type,
       wordCount,
       sections,
-      characters,
+      characters: [], // Empty by default - populated by AI analysis
       themes,
       filePath: req.file.filename,
       aiEnhanced: false,
@@ -489,12 +726,18 @@ app.post('/api/upload', upload.single('document'), async (req, res) => {
       genre: null
     };
 
+    // Get project-specific paths
+    const projectId = getProjectId(req);
+    const paths = getProjectPaths(projectId);
+
+    // Ensure project directories exist
+    await fs.ensureDir(paths.projectDir);
+
     // Load or create project data
-    const projectDataPath = path.join(PROJECTS_DIR, 'project-data.json');
     let projectData = { documents: [] };
 
-    if (await fs.pathExists(projectDataPath)) {
-      projectData = await fs.readJSON(projectDataPath);
+    if (await fs.pathExists(paths.dataPath)) {
+      projectData = await fs.readJSON(paths.dataPath);
     }
 
     // Add document and sort by date
@@ -502,7 +745,7 @@ app.post('/api/upload', upload.single('document'), async (req, res) => {
     projectData.documents.sort((a, b) => new Date(a.date) - new Date(b.date));
 
     // Save project data
-    await fs.writeJSON(projectDataPath, projectData, { spaces: 2 });
+    await fs.writeJSON(paths.dataPath, projectData, { spaces: 2 });
 
     res.json({
       success: true,
@@ -518,10 +761,11 @@ app.post('/api/upload', upload.single('document'), async (req, res) => {
 // Get all documents
 app.get('/api/documents', async (req, res) => {
   try {
-    const projectDataPath = path.join(PROJECTS_DIR, 'project-data.json');
+    const projectId = getProjectId(req);
+    const paths = getProjectPaths(projectId);
 
-    if (await fs.pathExists(projectDataPath)) {
-      const projectData = await fs.readJSON(projectDataPath);
+    if (await fs.pathExists(paths.dataPath)) {
+      const projectData = await fs.readJSON(paths.dataPath);
       res.json(projectData.documents);
     } else {
       res.json([]);
@@ -535,10 +779,11 @@ app.get('/api/documents', async (req, res) => {
 // Get document by ID
 app.get('/api/documents/:id', async (req, res) => {
   try {
-    const projectDataPath = path.join(PROJECTS_DIR, 'project-data.json');
+    const projectId = getProjectId(req);
+    const paths = getProjectPaths(projectId);
 
-    if (await fs.pathExists(projectDataPath)) {
-      const projectData = await fs.readJSON(projectDataPath);
+    if (await fs.pathExists(paths.dataPath)) {
+      const projectData = await fs.readJSON(paths.dataPath);
       const document = projectData.documents.find(d => d.id === req.params.id);
 
       if (document) {
@@ -558,17 +803,18 @@ app.get('/api/documents/:id', async (req, res) => {
 // Delete document
 app.delete('/api/documents/:id', async (req, res) => {
   try {
-    const projectDataPath = path.join(PROJECTS_DIR, 'project-data.json');
+    const projectId = getProjectId(req);
+    const paths = getProjectPaths(projectId);
 
-    if (await fs.pathExists(projectDataPath)) {
-      const projectData = await fs.readJSON(projectDataPath);
+    if (await fs.pathExists(paths.dataPath)) {
+      const projectData = await fs.readJSON(paths.dataPath);
       const documentIndex = projectData.documents.findIndex(d => d.id === req.params.id);
 
       if (documentIndex !== -1) {
         const document = projectData.documents[documentIndex];
 
         // Delete the uploaded file
-        const uploadPath = path.join(UPLOADS_DIR, document.filePath);
+        const uploadPath = path.join(paths.uploadsDir, document.filePath);
         if (await fs.pathExists(uploadPath)) {
           await fs.remove(uploadPath);
         }
@@ -577,7 +823,7 @@ app.delete('/api/documents/:id', async (req, res) => {
         projectData.documents.splice(documentIndex, 1);
 
         // Save updated data
-        await fs.writeJSON(projectDataPath, projectData, { spaces: 2 });
+        await fs.writeJSON(paths.dataPath, projectData, { spaces: 2 });
 
         res.json({ success: true, message: 'Document deleted' });
       } else {
@@ -599,19 +845,21 @@ app.post('/api/documents/:id/analyze', async (req, res) => {
       return res.status(400).json({ error: 'AI analysis not available. Set OPENROUTER_API_KEY in .env' });
     }
 
-    const projectDataPath = path.join(PROJECTS_DIR, 'project-data.json');
+    const requestedModel = req.body?.model || 'openai/gpt-4o'; // Get model from request body
+    const projectId = getProjectId(req);
+    const paths = getProjectPaths(projectId);
 
-    if (await fs.pathExists(projectDataPath)) {
-      const projectData = await fs.readJSON(projectDataPath);
+    if (await fs.pathExists(paths.dataPath)) {
+      const projectData = await fs.readJSON(paths.dataPath);
       const document = projectData.documents.find(d => d.id === req.params.id);
 
       if (document) {
         // Load the original file to get full text
-        const uploadPath = path.join(UPLOADS_DIR, document.filePath);
+        const uploadPath = path.join(paths.uploadsDir, document.filePath);
         const text = await extractTextFromFile(uploadPath, document.filename);
 
-        // Run AI analysis
-        const aiAnalysis = await analyzeContentWithAI(text, document.filename);
+        // Run AI analysis with document type context and selected model
+        const aiAnalysis = await analyzeContentWithAI(text, document.filename, document.type, requestedModel);
 
         if (aiAnalysis) {
           // Update document with AI analysis
@@ -622,8 +870,20 @@ app.post('/api/documents/:id/analyze', async (req, res) => {
           document.aiEnhanced = true;
           document.aiModel = aiAnalysis.model; // Track which AI model was used
 
+          // Update document type if it was classified
+          if (aiAnalysis.detectedType) {
+            document.type = aiAnalysis.detectedType;
+          }
+
+          // Store document-type-specific fields
+          if (aiAnalysis.notesFrom) document.notesFrom = aiAnalysis.notesFrom;
+          if (aiAnalysis.actionItems) document.actionItems = aiAnalysis.actionItems;
+          if (aiAnalysis.questions) document.questions = aiAnalysis.questions;
+          if (aiAnalysis.structure) document.structure = aiAnalysis.structure;
+          if (aiAnalysis.beatCount) document.beatCount = aiAnalysis.beatCount;
+
           // Save updated data
-          await fs.writeJSON(projectDataPath, projectData, { spaces: 2 });
+          await fs.writeJSON(paths.dataPath, projectData, { spaces: 2 });
 
           res.json({
             success: true,
@@ -644,13 +904,343 @@ app.post('/api/documents/:id/analyze', async (req, res) => {
   }
 });
 
+// Add character to document
+app.post('/api/documents/:id/characters', async (req, res) => {
+  try {
+    const { character } = req.body;
+    if (!character) {
+      return res.status(400).json({ error: 'Character name required' });
+    }
+
+    const projectId = getProjectId(req);
+    const paths = getProjectPaths(projectId);
+
+    if (await fs.pathExists(paths.dataPath)) {
+      const projectData = await fs.readJSON(paths.dataPath);
+      const document = projectData.documents.find(d => d.id === req.params.id);
+
+      if (document) {
+        if (!document.characters) document.characters = [];
+
+        // Check if character already exists
+        if (!document.characters.includes(character)) {
+          document.characters.push(character);
+          await fs.writeJSON(paths.dataPath, projectData, { spaces: 2 });
+          res.json({ success: true, characters: document.characters });
+        } else {
+          res.status(400).json({ error: 'Character already exists' });
+        }
+      } else {
+        res.status(404).json({ error: 'Document not found' });
+      }
+    } else {
+      res.status(404).json({ error: 'Project not found' });
+    }
+  } catch (error) {
+    console.error('Add character error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Remove character from document
+app.delete('/api/documents/:id/characters', async (req, res) => {
+  try {
+    const { character } = req.body;
+    if (!character) {
+      return res.status(400).json({ error: 'Character name required' });
+    }
+
+    const projectId = getProjectId(req);
+    const paths = getProjectPaths(projectId);
+
+    if (await fs.pathExists(paths.dataPath)) {
+      const projectData = await fs.readJSON(paths.dataPath);
+      const document = projectData.documents.find(d => d.id === req.params.id);
+
+      if (document) {
+        if (document.characters) {
+          document.characters = document.characters.filter(c => c !== character);
+          await fs.writeJSON(paths.dataPath, projectData, { spaces: 2 });
+          res.json({ success: true, characters: document.characters });
+        } else {
+          res.status(400).json({ error: 'No characters found' });
+        }
+      } else {
+        res.status(404).json({ error: 'Document not found' });
+      }
+    } else {
+      res.status(404).json({ error: 'Project not found' });
+    }
+  } catch (error) {
+    console.error('Remove character error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add theme to document
+app.post('/api/documents/:id/themes', async (req, res) => {
+  try {
+    const { theme } = req.body;
+    if (!theme) {
+      return res.status(400).json({ error: 'Theme required' });
+    }
+
+    const projectId = getProjectId(req);
+    const paths = getProjectPaths(projectId);
+
+    if (await fs.pathExists(paths.dataPath)) {
+      const projectData = await fs.readJSON(paths.dataPath);
+      const document = projectData.documents.find(d => d.id === req.params.id);
+
+      if (document) {
+        if (!document.themes) document.themes = [];
+
+        // Check if theme already exists
+        if (!document.themes.includes(theme)) {
+          document.themes.push(theme);
+          await fs.writeJSON(paths.dataPath, projectData, { spaces: 2 });
+          res.json({ success: true, themes: document.themes });
+        } else {
+          res.status(400).json({ error: 'Theme already exists' });
+        }
+      } else {
+        res.status(404).json({ error: 'Document not found' });
+      }
+    } else {
+      res.status(404).json({ error: 'Project not found' });
+    }
+  } catch (error) {
+    console.error('Add theme error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Remove theme from document
+app.delete('/api/documents/:id/themes', async (req, res) => {
+  try {
+    const { theme } = req.body;
+    if (!theme) {
+      return res.status(400).json({ error: 'Theme required' });
+    }
+
+    const projectId = getProjectId(req);
+    const paths = getProjectPaths(projectId);
+
+    if (await fs.pathExists(paths.dataPath)) {
+      const projectData = await fs.readJSON(paths.dataPath);
+      const document = projectData.documents.find(d => d.id === req.params.id);
+
+      if (document) {
+        if (document.themes) {
+          document.themes = document.themes.filter(t => t !== theme);
+          await fs.writeJSON(paths.dataPath, projectData, { spaces: 2 });
+          res.json({ success: true, themes: document.themes });
+        } else {
+          res.status(400).json({ error: 'No themes found' });
+        }
+      } else {
+        res.status(404).json({ error: 'Document not found' });
+      }
+    } else {
+      res.status(404).json({ error: 'Project not found' });
+    }
+  } catch (error) {
+    console.error('Remove theme error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get full document text
+app.get('/api/documents/:id/text', async (req, res) => {
+  try {
+    const projectId = getProjectId(req);
+    const paths = getProjectPaths(projectId);
+
+    if (await fs.pathExists(paths.dataPath)) {
+      const projectData = await fs.readJSON(paths.dataPath);
+      const document = projectData.documents.find(d => d.id === req.params.id);
+
+      if (document) {
+        const uploadPath = path.join(paths.uploadsDir, document.filePath);
+        const text = await extractTextFromFile(uploadPath, document.filename);
+        res.json({ success: true, text });
+      } else {
+        res.status(404).json({ error: 'Document not found' });
+      }
+    } else {
+      res.status(404).json({ error: 'Project not found' });
+    }
+  } catch (error) {
+    console.error('Get document text error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update grid (mark document for Story Grid inclusion with AI analysis)
+app.post('/api/documents/:id/update-grid', async (req, res) => {
+  try {
+    if (!openai) {
+      return res.status(400).json({ error: 'AI analysis not available. Set OPENROUTER_API_KEY in .env' });
+    }
+
+    const projectId = getProjectId(req);
+    const paths = getProjectPaths(projectId);
+
+    if (await fs.pathExists(paths.dataPath)) {
+      const projectData = await fs.readJSON(paths.dataPath);
+      const document = projectData.documents.find(d => d.id === req.params.id);
+
+      if (document) {
+        // Load full document text
+        const uploadPath = path.join(paths.uploadsDir, document.filePath);
+        const text = await extractTextFromFile(uploadPath, document.filename);
+
+        // Get the user's preferred model or default
+        const model = req.body?.model || 'openai/gpt-4o';
+
+        // Use existing characters from document (including manual edits)
+        const characters = document.characters || [];
+        const themes = document.themes || [];
+
+        if (characters.length === 0) {
+          return res.status(400).json({
+            error: 'No characters found in document. Please analyze the document first or add characters manually.'
+          });
+        }
+
+        // AI prompt to analyze story structure
+        const prompt = `You are analyzing a screenplay/story document to create a Story Grid.
+
+Document Type: ${document.type}
+Characters: ${characters.join(', ')}
+Themes: ${themes.join(', ')}
+
+Please analyze this document and identify:
+
+1. The episode/chapter/act structure (how many distinct episodes or story beats are there?)
+2. For each episode/chapter/act, what does EACH character do? (Be specific but concise - 1-2 sentences per character per episode)
+3. Which themes appear in each episode/character combination?
+
+IMPORTANT FORMATTING - Respond with ONLY valid JSON in this exact format:
+{
+  "episodes": [
+    { "number": 1, "title": "Episode Title or Act Name" },
+    { "number": 2, "title": "Next Episode Title" }
+  ],
+  "characterActions": {
+    "CHARACTER_NAME": {
+      "1": "What this character does in episode 1",
+      "2": "What this character does in episode 2"
+    }
+  },
+  "themeAppearances": {
+    "CHARACTER_NAME": {
+      "1": ["theme1", "theme2"],
+      "2": ["theme1"]
+    }
+  }
+}
+
+Document text:
+${text.slice(0, 15000)}`;
+
+        console.log('Generating story grid with AI...');
+
+        const completion = await openai.chat.completions.create({
+          model: model,
+          messages: [
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 4000
+        });
+
+        const responseText = completion.choices[0].message.content.trim();
+
+        // Extract JSON from response (handle markdown code blocks)
+        let jsonText = responseText;
+        if (responseText.includes('```json')) {
+          jsonText = responseText.split('```json')[1].split('```')[0].trim();
+        } else if (responseText.includes('```')) {
+          jsonText = responseText.split('```')[1].split('```')[0].trim();
+        }
+
+        const gridData = JSON.parse(jsonText);
+
+        // Save to document
+        document.episodes = gridData.episodes;
+        document.characterActions = gridData.characterActions;
+        document.themeAppearances = gridData.themeAppearances || {};
+        document.inStoryGrid = true;
+        document.gridUpdatedAt = new Date().toISOString();
+
+        await fs.writeJSON(paths.dataPath, projectData, { spaces: 2 });
+
+        res.json({
+          success: true,
+          message: 'Story grid generated with AI',
+          episodes: gridData.episodes,
+          characterActions: gridData.characterActions,
+          themeAppearances: gridData.themeAppearances
+        });
+      } else {
+        res.status(404).json({ error: 'Document not found' });
+      }
+    } else {
+      res.status(404).json({ error: 'Project not found' });
+    }
+  } catch (error) {
+    console.error('Update grid error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Save story grid data for a specific document
+app.post('/api/story-grid/:id', async (req, res) => {
+  try {
+    const { episodes, characterActions, sectionActions, themeAppearances, characterOrder } = req.body;
+
+    const projectId = getProjectId(req);
+    const paths = getProjectPaths(projectId);
+
+    if (await fs.pathExists(paths.dataPath)) {
+      const projectData = await fs.readJSON(paths.dataPath);
+      const document = projectData.documents.find(d => d.id === req.params.id);
+
+      if (document) {
+        // Save episodes, character actions, section actions, theme appearances, and character order to document
+        if (episodes) document.episodes = episodes;
+        if (characterActions) document.characterActions = characterActions;
+        if (sectionActions) document.sectionActions = sectionActions;
+        if (themeAppearances) document.themeAppearances = themeAppearances;
+        if (characterOrder) document.characterOrder = characterOrder;
+        document.gridUpdatedAt = new Date().toISOString();
+
+        await fs.writeJSON(paths.dataPath, projectData, { spaces: 2 });
+        res.json({ success: true, message: 'Story grid saved' });
+      } else {
+        res.status(404).json({ error: 'Document not found' });
+      }
+    } else {
+      res.status(404).json({ error: 'Project not found' });
+    }
+  } catch (error) {
+    console.error('Save story grid error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Compare two documents
 app.get('/api/compare/:id1/:id2', async (req, res) => {
   try {
-    const projectDataPath = path.join(PROJECTS_DIR, 'project-data.json');
+    const projectId = getProjectId(req);
+    const paths = getProjectPaths(projectId);
 
-    if (await fs.pathExists(projectDataPath)) {
-      const projectData = await fs.readJSON(projectDataPath);
+    if (await fs.pathExists(paths.dataPath)) {
+      const projectData = await fs.readJSON(paths.dataPath);
       let doc1 = projectData.documents.find(d => d.id === req.params.id1);
       let doc2 = projectData.documents.find(d => d.id === req.params.id2);
 
@@ -664,8 +1254,8 @@ app.get('/api/compare/:id1/:id2', async (req, res) => {
       }
 
       // Load original text from both documents
-      const text1Path = path.join(UPLOADS_DIR, doc1.filePath);
-      const text2Path = path.join(UPLOADS_DIR, doc2.filePath);
+      const text1Path = path.join(paths.uploadsDir, doc1.filePath);
+      const text2Path = path.join(paths.uploadsDir, doc2.filePath);
 
       const text1 = await extractTextFromFile(text1Path, doc1.filename);
       const text2 = await extractTextFromFile(text2Path, doc2.filename);
@@ -779,10 +1369,11 @@ app.get('/api/compare/:id1/:id2', async (req, res) => {
 // Get timeline/stats
 app.get('/api/timeline', async (req, res) => {
   try {
-    const projectDataPath = path.join(PROJECTS_DIR, 'project-data.json');
+    const projectId = getProjectId(req);
+    const paths = getProjectPaths(projectId);
 
-    if (await fs.pathExists(projectDataPath)) {
-      const projectData = await fs.readJSON(projectDataPath);
+    if (await fs.pathExists(paths.dataPath)) {
+      const projectData = await fs.readJSON(paths.dataPath);
       const documents = projectData.documents;
 
       const stats = {
@@ -803,8 +1394,14 @@ app.get('/api/timeline', async (req, res) => {
       // Reverse chronological order (newest first)
       const documentsReversed = [...documents].reverse();
 
+      // Add styling information to each document
+      const documentsWithStyle = documentsReversed.map(doc => ({
+        ...doc,
+        style: getDocumentTypeStyle(doc.type)
+      }));
+
       res.json({
-        documents: documentsReversed,
+        documents: documentsWithStyle,
         stats
       });
     } else {
@@ -830,18 +1427,19 @@ app.get('/api/timeline', async (req, res) => {
 // Story Grid - tracks characters/themes across all documents
 app.get('/api/story-grid', async (req, res) => {
   try {
-    const projectDataPath = path.join(PROJECTS_DIR, 'project-data.json');
+    const projectId = getProjectId(req);
+    const paths = getProjectPaths(projectId);
 
-    if (await fs.pathExists(projectDataPath)) {
-      const projectData = await fs.readJSON(projectDataPath);
+    if (await fs.pathExists(paths.dataPath)) {
+      const projectData = await fs.readJSON(paths.dataPath);
       const documents = projectData.documents;
 
       // Sort documents chronologically
       const sortedDocs = [...documents].sort((a, b) => new Date(a.date) - new Date(b.date));
 
-      // Get all unique characters and themes
-      const allCharacters = [...new Set(documents.flatMap(d => d.characters))].sort();
-      const allThemes = [...new Set(documents.flatMap(d => d.themes))].sort();
+      // Get all unique characters and themes (with safety checks)
+      const allCharacters = [...new Set(documents.flatMap(d => d.characters || []))].sort();
+      const allThemes = [...new Set(documents.flatMap(d => d.themes || []))].sort();
 
       // Build character matrix (character × document)
       const characterGrid = allCharacters.map(character => {
@@ -849,9 +1447,9 @@ app.get('/api/story-grid', async (req, res) => {
           docId: doc.id,
           docName: doc.filename,
           docDate: doc.date,
-          present: doc.characters.includes(character),
+          present: (doc.characters || []).includes(character),
           // Count occurrences in full text if needed (future enhancement)
-          mentions: doc.characters.includes(character) ? 1 : 0
+          mentions: (doc.characters || []).includes(character) ? 1 : 0
         }));
 
         return {
@@ -869,7 +1467,7 @@ app.get('/api/story-grid', async (req, res) => {
           docId: doc.id,
           docName: doc.filename,
           docDate: doc.date,
-          present: doc.themes.includes(theme)
+          present: (doc.themes || []).includes(theme)
         }));
 
         return {
@@ -887,7 +1485,13 @@ app.get('/api/story-grid', async (req, res) => {
           filename: d.filename,
           date: d.date,
           type: d.type,
-          wordCount: d.wordCount
+          wordCount: d.wordCount,
+          characters: d.characters || [],
+          themes: d.themes || [],
+          episodes: d.episodes || [],
+          characterActions: d.characterActions || {},
+          themeAppearances: d.themeAppearances || {},
+          characterOrder: d.characterOrder || []
         })),
         characterGrid,
         themeGrid,
@@ -917,6 +1521,221 @@ app.get('/api/story-grid', async (req, res) => {
   } catch (error) {
     console.error('Story grid error:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Get document type information
+app.get('/api/document-types', (req, res) => {
+  // Return document types with descriptions and styling
+  const types = {};
+  Object.keys(DOCUMENT_TYPES).forEach(key => {
+    const type = DOCUMENT_TYPES[key];
+    types[key] = {
+      name: type.name,
+      description: type.description,
+      expectedContent: type.expectedContent,
+      style: getDocumentTypeStyle(key),
+      isExternal: type.isExternal || false,
+      isInternal: type.isInternal || false
+    };
+  });
+  res.json(types);
+});
+
+// ========================================
+// PROJECT MANAGEMENT ENDPOINTS
+// ========================================
+
+// Get all projects
+app.get('/api/projects', async (req, res) => {
+  try {
+    const projectDirs = await fs.readdir(PROJECTS_DIR);
+    const projects = [];
+
+    for (const dirName of projectDirs) {
+      const projectPath = path.join(PROJECTS_DIR, dirName);
+      const stat = await fs.stat(projectPath);
+
+      if (stat.isDirectory()) {
+        const metaPath = path.join(projectPath, 'project-meta.json');
+        const dataPath = path.join(projectPath, 'project-data.json');
+
+        // Read project metadata
+        let meta = {
+          id: dirName,
+          name: dirName,
+          createdAt: stat.birthtime
+        };
+
+        if (await fs.pathExists(metaPath)) {
+          const savedMeta = await fs.readJSON(metaPath);
+          meta = { ...meta, ...savedMeta };
+        }
+
+        // Get document stats
+        let documentCount = 0;
+        let characterCount = 0;
+        let themeCount = 0;
+
+        if (await fs.pathExists(dataPath)) {
+          const projectData = await fs.readJSON(dataPath);
+          documentCount = projectData.documents?.length || 0;
+
+          const allCharacters = [...new Set(projectData.documents?.flatMap(d => d.characters || []) || [])];
+          const allThemes = [...new Set(projectData.documents?.flatMap(d => d.themes || []) || [])];
+
+          characterCount = allCharacters.length;
+          themeCount = allThemes.length;
+        }
+
+        projects.push({
+          ...meta,
+          documentCount,
+          characterCount,
+          themeCount
+        });
+      }
+    }
+
+    // Sort by most recently updated
+    projects.sort((a, b) => {
+      const dateA = new Date(a.updatedAt || a.createdAt);
+      const dateB = new Date(b.updatedAt || b.createdAt);
+      return dateB - dateA;
+    });
+
+    res.json({ success: true, projects });
+  } catch (error) {
+    console.error('Get projects error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Create new project
+app.post('/api/projects', async (req, res) => {
+  try {
+    const { name, description } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, error: 'Project name is required' });
+    }
+
+    // Generate project ID from name (sanitized)
+    const projectId = name.trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    const projectPath = path.join(PROJECTS_DIR, projectId);
+
+    // Check if project already exists
+    if (await fs.pathExists(projectPath)) {
+      return res.status(400).json({ success: false, error: 'A project with this name already exists' });
+    }
+
+    // Create project directory
+    await fs.ensureDir(projectPath);
+    await fs.ensureDir(path.join(projectPath, 'uploads'));
+
+    // Create project metadata
+    const metadata = {
+      id: projectId,
+      name: name.trim(),
+      description: description?.trim() || '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    await fs.writeJSON(path.join(projectPath, 'project-meta.json'), metadata, { spaces: 2 });
+
+    // Create empty project data file
+    const projectData = {
+      documents: []
+    };
+
+    await fs.writeJSON(path.join(projectPath, 'project-data.json'), projectData, { spaces: 2 });
+
+    res.json({
+      success: true,
+      project: {
+        ...metadata,
+        documentCount: 0,
+        characterCount: 0,
+        themeCount: 0
+      }
+    });
+  } catch (error) {
+    console.error('Create project error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Delete project
+app.delete('/api/projects/:id', async (req, res) => {
+  try {
+    const projectPath = path.join(PROJECTS_DIR, req.params.id);
+
+    if (!(await fs.pathExists(projectPath))) {
+      return res.status(404).json({ success: false, error: 'Project not found' });
+    }
+
+    // Delete entire project directory
+    await fs.remove(projectPath);
+
+    res.json({ success: true, message: 'Project deleted' });
+  } catch (error) {
+    console.error('Delete project error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get project settings
+app.get('/api/projects/:id/settings', async (req, res) => {
+  try {
+    const paths = getProjectPaths(req.params.id);
+    const settingsPath = path.join(paths.projectDir, 'project-settings.json');
+
+    // If settings file exists, load it
+    if (await fs.pathExists(settingsPath)) {
+      const settings = await fs.readJSON(settingsPath);
+      return res.json({ success: true, settings });
+    }
+
+    // Otherwise, return default settings
+    res.json({
+      success: true,
+      settings: {
+        aiPrompts: DEFAULT_AI_PROMPTS
+      }
+    });
+  } catch (error) {
+    console.error('Get project settings error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Save project settings
+app.post('/api/projects/:id/settings', async (req, res) => {
+  try {
+    const paths = getProjectPaths(req.params.id);
+    const settingsPath = path.join(paths.projectDir, 'project-settings.json');
+
+    // Validate that project exists
+    if (!(await fs.pathExists(paths.projectDir))) {
+      return res.status(404).json({ success: false, error: 'Project not found' });
+    }
+
+    // Save settings
+    const settings = {
+      aiPrompts: req.body.aiPrompts || {}
+    };
+
+    await fs.writeJSON(settingsPath, settings, { spaces: 2 });
+
+    res.json({ success: true, message: 'Settings saved', settings });
+  } catch (error) {
+    console.error('Save project settings error:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

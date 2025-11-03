@@ -1488,6 +1488,8 @@ app.get('/api/story-grid', async (req, res) => {
           wordCount: d.wordCount,
           characters: d.characters || [],
           themes: d.themes || [],
+          sections: d.sections || [],
+          sectionActions: d.sectionActions || {},
           episodes: d.episodes || [],
           characterActions: d.characterActions || {},
           themeAppearances: d.themeAppearances || {},

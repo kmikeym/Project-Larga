@@ -40,11 +40,12 @@ open http://localhost:3000
 
 ### Story Grid (Alan Moore BIG NUMBERS Style)
 - **Character × Section matrix** for deep document analysis
-- Track which characters appear in which sections (INTRO, ACT ONE, etc.)
+- Automatically displays after AI analysis (no separate "Update Grid" step)
+- Sections become columns (INTRO, ACT ONE, etc.), characters become rows
 - Editable cells for character actions/notes per section
 - Drag-and-drop character reordering
-- Auto-save with visual status indicators
-- Inspired by Alan Moore's handwritten story schematics
+- Auto-save with visual status indicators (1-second debounce)
+- Inspired by Alan Moore's handwritten story schematics for BIG NUMBERS
 
 ### Document Comparison
 - Side-by-side comparison of any two documents

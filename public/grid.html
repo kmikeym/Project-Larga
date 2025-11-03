@@ -427,8 +427,9 @@
 
       const gridContent = document.getElementById('gridContent');
 
-      // Get characters from the current document only
+      // Get characters and themes from the current document only
       let allCharacters = currentDoc.characters || [];
+      const allThemes = currentDoc.themes || [];
 
       // Apply custom character order if it exists
       if (currentDoc.characterOrder && currentDoc.characterOrder.length > 0) {

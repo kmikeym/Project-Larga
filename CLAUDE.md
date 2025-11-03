@@ -42,10 +42,11 @@ Metadata stored → Timeline updated → Analysis displayed
 - Document type classification (pitch/notes/draft/outline)
 - AI-powered document analysis (summary, genre extraction)
 - **Story Grid: Character × Section matrix (Alan Moore BIG NUMBERS style)**
-  - Characters in rows, document sections in columns
+  - Characters in rows, document sections in columns (from AI-extracted sections)
   - Editable cells for character actions/notes per section
   - Drag-and-drop character reordering
   - Auto-save with visual status indicators
+  - No separate "Update Grid" step needed - works automatically after document analysis
 - Theme evolution tracking across documents
 - Basic statistics dashboard
 - **AI-Only Character Extraction** (no regex, increased 25k char context)
@@ -268,9 +269,19 @@ When beginning implementation, start with the first real document:
 8. **Customizable AI Prompts**: Per-project, per-document-type prompt and model customization
 9. **Character Reordering**: Drag-and-drop to reorder characters in Story Grid
 
+### Story Grid Workflow
+The Story Grid now uses a simplified, automatic workflow:
+1. **Upload document** → Sections extracted automatically
+2. **Click "Analyze"** → AI extracts characters and themes
+3. **Visit Story Grid** → Grid displays automatically with sections as columns
+4. **Fill in cells manually** → Track character actions per section
+5. **Auto-saves** → Changes saved after 1 second of no typing
+
+**No "Update Grid" button needed** - the grid reads sections directly from the document after AI analysis.
+
 ### Known Limitations
 - .pages files not supported (macOS package bundles - users must export to PDF/DOCX)
-- Character extraction based on ALL-CAPS words (screenplay convention)
+- Character extraction AI-only (no regex fallback)
 - Theme extraction uses simple keyword analysis (could be more sophisticated)
 - No user authentication (local/single-user deployment)
 

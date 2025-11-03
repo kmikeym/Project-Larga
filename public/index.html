@@ -990,9 +990,6 @@
                 <button class="read-full-btn" onclick="event.stopPropagation(); readFullDocument('${doc.id}', '${doc.filename}')">
                   📖 Read Full Document
                 </button>
-                <button class="update-grid-btn" onclick="event.stopPropagation(); updateGrid('${doc.id}')">
-                  ✅ Update Grid
-                </button>
               </div>
             </div>
           </div>
@@ -1271,35 +1268,6 @@
         }
       } catch (error) {
         alert(`Failed to load document: ${error.message}`);
-      }
-    }
-
-    // Update grid with AI analysis
-    async function updateGrid(docId) {
-      const settings = loadSettings();
-
-      showMessage('loading', 'Generating Story Grid with AI... This may take 30-60 seconds.');
-
-      try {
-        const response = await ProjectUtils.fetchWithProject(`${API_BASE}/api/documents/${docId}/update-grid`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ model: settings.aiModel })
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-          showMessage('success', 'Story Grid generated! View it in the Story Grid page.');
-          // Reload timeline to show updated status
-          setTimeout(() => loadTimeline(), 1000);
-        } else {
-          showMessage('error', data.error || 'Failed to generate grid');
-        }
-      } catch (error) {
-        showMessage('error', `Failed to generate grid: ${error.message}`);
       }
     }
 
